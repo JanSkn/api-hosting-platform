@@ -1,0 +1,291 @@
+# all resources: https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-template-resource-type-ref.html
+
+# [1] https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-set-up-simple-proxy.html
+# [2] https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-eventsource.html
+# [3] https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+# [4] https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html#cfn-s3-bucket-bucketname
+# [5] https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-dynamodb-table.html#cfn-dynamodb-table-tablename
+# [6] https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-sqs-queue.html#cfn-sqs-queue-queuename
+
+
+# !!! when adjusting some parameters here, update the documentation (web/src/docs/documentation.md)
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Backend setup for APIForge. 
+
+Globals:
+  Function:
+    Runtime: java25 # [3]
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, stg, prod]
+  LambdaMemory:
+    Type: Integer
+
+Resources:
+  APIGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: APIForgeUserPool
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+      UsernameAttributes: # login identifier
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: preferred_username
+          AttributeDataType: String
+          StringAttributeConstraints:
+            MinLength: "1"
+            MaxLength: "25"
+          Required: true
+          Mutable: true
+  
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: APIForgeUserPoolClient
+      GenerateSecret: false
+
+  CoreBackendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      # Fat JAR with maven shade plugin
+      CodeUri: ../lambda/core-backend-lambda
+      Timeout: 15
+      Architectures:
+        - arm64
+      MemorySize: !Ref LambdaMemory
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            RestApiId: !Ref APIGateway # [2]
+            Path: /{proxy+} # [1]
+            Method: ANY
+      Policies:
+        # generate presigned S3 URLs
+        - S3ReadPolicy:
+            BucketName: !Ref UserCodeBucket
+        - S3WritePolicy:
+            BucketName: !Ref UserCodeBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserMetadataTable
+
+  UserMetadataTable:
+  # not AWS::Serverless:SimpleTable for secondary key
+    Type: AWS::DynamoDB::Table
+  # table name auto generated here, see [5]
+  Properties:
+    BillingMode: PAY_PER_REQUEST 
+    AttributeDefinitions:
+      - AttributeName: userId
+        AttributeType: S
+      - AttributeName: deploymentId
+        AttributeType: S
+    KeySchema:
+      - AttributeName: userId
+        KeyType: HASH # Partition Key
+      - AttributeName: deploymentId
+        KeyType: RANGE # Sort Key
+    SSESpecification:
+      SSEEnabled: true
+
+  UserCodeBucket:
+    Type: AWS::S3::Bucket
+    # bucket name auto generated here, see [4]
+    Properties:
+      # block any public access, only presigned URLs generated from core backend lambda
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  BuildJobQueue:
+    Type: AWS::SQS::Queue
+    # SQS name auto generated here, see [6]
+    Properties:
+      # no duplicates
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      # if SQS lambda crashes
+      VisibilityTimeout: 90 # lambda timeout x 6 retries
+
+  BuildOrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../lambda/build-orchestrator-lambda
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BuildJobQueue.Arn
+            BatchSize: 1 # one deployment per instance
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildDockerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # write logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+              # read code from S3
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:aws:s3:::${UserCodeBucket}/*"
+              # ECR login & push
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: !GetAtt EcrRepository.Arn
+              # 4. user Lambda update (end of deployment, see buildspec.yml)
+              - Effect: Allow
+                Action:
+                  - lambda:UpdateFunctionCode
+                Resource: "*" # TODO more specific for user lambdas only
+
+  CodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "user-image-builds-${Environment}"
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+        PrivilegedMode: true # required für Docker builds
+        EnvironmentVariables:
+          # set here so that it is fixed, all others in buildspec.yml will be set by Java SDK
+          - Name: REPOSITORY_URI
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/user-apps"
+      Source:
+        Type: S3
+        Location: !Sub "${UserCodeBucket}/code-uploads/" # TODO
+      LogConfig: # TODO, needed for frontend logs
+
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      # name must be same in CodeBuild REPOSITORY_URI
+      RepositoryName: "user-apps"
+      LifecyclePolicy:
+        # first rule would only apply if updated image with same tag
+        # --> old gets untagged
+        # (only if user can update a deployment)
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Delete ghost images without tag after 1 day",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 2,
+                "description": "Keep only 3 images per user prefix",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["user-"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+  # TODO cloudwatch with retention period to keep logs small
+
+Outputs:
+  ApiUrl:
+    Description: "API Base URL"
+    Value: !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+  
+  UserPoolId:
+    Description: "UserPool ID"
+    Value: !Ref CognitoUserPool
+  
+  ClientId:
+    Description: "Client ID"
+    Value: !Ref CognitoUserPoolClient
+
+  S3BucketName:
+    Description: "Auto-generated S3 Bucket name"
+    Value: !Ref UserCodeBucket
+
+  DynamoDBTableName:
+    Description: "Auto-generated DynamoDB Table name"
+    Value: !Ref UserMetadataTable
+
+  SQSQueueUrl:
+    Description: "Auto-generated SQS Queue URL"
+    Value: !Ref BuildJobQueue
+
+  CodeBuildName:
+    Description: "Auto-generated CodeBuild name"
+    Value: !Ref CodeBuild
+
+  EcrRepositoryUri:
+    Description: "ECR Repository URI"
+    Value: !GetAtt EcrRepository.RepositoryUri

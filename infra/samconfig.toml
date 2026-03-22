@@ -1,0 +1,16 @@
+[dev.deploy.parameters]
+stack_name = "apiforge-dev"
+region = "eu-central-1"
+parameter_overrides = ["Environment=dev", "LambdaMemory=128"]
+
+[staging.deploy.parameters]
+stack_name = "apiforge-stg"
+region = "eu-central-1"
+parameter_overrides = ["Environment=stg", "LambdaMemory=128"]
+
+[prod.deploy.parameters]
+stack_name = "apiforge-prod"
+region = "eu-central-1"
+parameter_overrides = ["Environment=prod", "LambdaMemory=512"]
+
+TODO capabilities

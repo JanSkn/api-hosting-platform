@@ -1,0 +1,7 @@
+name: "Setup Just"
+description: "Installs Just command runner"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: extractions/setup-just@v2
