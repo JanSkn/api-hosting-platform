@@ -1,91 +1,76 @@
 # all resources: https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-template-resource-type-ref.html
 
-# [1] https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-set-up-simple-proxy.html
-# [2] https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-eventsource.html
-# [3] https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
-# [4] https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html#cfn-s3-bucket-bucketname
-# [5] https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-dynamodb-table.html#cfn-dynamodb-table-tablename
-# [6] https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-sqs-queue.html#cfn-sqs-queue-queuename
-
-
 # !!! when adjusting some parameters here, update the documentation (web/src/docs/documentation.md)
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  Backend setup for APIForge. 
+Description: Backend and Frontend setup for APIForge. 
 
 Globals:
   Function:
-    Runtime: java25 # [3]
+    Runtime: java25
 
 Parameters:
   Environment:
     Type: String
     AllowedValues: [dev, stg, prod]
+  AwsRegion:
+    Type: String
   LambdaMemory:
-    Type: Integer
+    Type: Number
+
+Conditions:
+  isNotLocal: 
+    !Not:
+      - !Equals [ !Ref Environment, local ]
 
 Resources:
+  AuthStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./nested/auth.yml
+
+  # FrontendStack:
+  #   Type: AWS::Serverless::Application
+  #   Condition: isNotLocal
+  #   Properties:
+  #     Location: ./nested/frontend.yml
+
   APIGateway:
     Type: AWS::Serverless::Api
     Properties:
       StageName: !Ref Environment
-      Cors: "'*'"
+      Cors:
+        AllowMethods: "'ANY'" # specified in Quarkus
+        AllowOrigin: "'*'" # !If [isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'"]
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
           CognitoAuthorizer:
-            UserPoolArn: !GetAtt CognitoUserPool.Arn
-
-  CognitoUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: APIForgeUserPool
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-      UsernameAttributes: # login identifier
-        - email
-      UsernameConfiguration:
-        CaseSensitive: false
-      AutoVerifiedAttributes:
-        - email
-      Schema:
-        - Name: email
-          AttributeDataType: String
-          Required: true
-          Mutable: true
-        - Name: preferred_username
-          AttributeDataType: String
-          StringAttributeConstraints:
-            MinLength: "1"
-            MaxLength: "25"
-          Required: true
-          Mutable: true
-  
-  CognitoUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      UserPoolId: !Ref CognitoUserPool
-      ClientName: APIForgeUserPoolClient
-      GenerateSecret: false
+            UserPoolArn: !GetAtt AuthStack.Outputs.UserPoolArn
 
   CoreBackendFunction:
     Type: AWS::Serverless::Function
     Properties:
       # Fat JAR with maven shade plugin
-      CodeUri: ../lambda/core-backend-lambda
+      CodeUri: ../lambda/core-backend-lambda/target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Timeout: 15
       Architectures:
         - arm64
       MemorySize: !Ref LambdaMemory
       Events:
-        Root:
+        ApiGatewayEvent:
           Type: Api
           Properties:
-            RestApiId: !Ref APIGateway # [2]
-            Path: /{proxy+} # [1]
+            RestApiId: !Ref APIGateway
+            Path: /{proxy+}
             Method: ANY
+      Environment:
+        Variables:
+          ENV: !Ref Environment
+          AWS_REGION: !Ref AwsRegion # that deployment region and lambda region are the same
+          BUILD_QUEUE_URL: !Ref BuildJobQueue # for sending build requests from core backend to build orchestrator lambda
+          USER_CODE_BUCKET: !Ref UserCodeBucket # for generating presigned URLs for user code uploads
       Policies:
         # generate presigned S3 URLs
         - S3ReadPolicy:
@@ -98,25 +83,23 @@ Resources:
   UserMetadataTable:
   # not AWS::Serverless:SimpleTable for secondary key
     Type: AWS::DynamoDB::Table
-  # table name auto generated here, see [5]
-  Properties:
-    BillingMode: PAY_PER_REQUEST 
-    AttributeDefinitions:
-      - AttributeName: userId
-        AttributeType: S
-      - AttributeName: deploymentId
-        AttributeType: S
-    KeySchema:
-      - AttributeName: userId
-        KeyType: HASH # Partition Key
-      - AttributeName: deploymentId
-        KeyType: RANGE # Sort Key
-    SSESpecification:
-      SSEEnabled: true
+    Properties:
+      BillingMode: PAY_PER_REQUEST 
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: deploymentId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH # Partition Key
+        - AttributeName: deploymentId
+          KeyType: RANGE # Sort Key
+      SSESpecification:
+        SSEEnabled: true
 
   UserCodeBucket:
     Type: AWS::S3::Bucket
-    # bucket name auto generated here, see [4]
     Properties:
       # block any public access, only presigned URLs generated from core backend lambda
       PublicAccessBlockConfiguration:
@@ -131,7 +114,6 @@ Resources:
 
   BuildJobQueue:
     Type: AWS::SQS::Queue
-    # SQS name auto generated here, see [6]
     Properties:
       # no duplicates
       FifoQueue: true
@@ -139,16 +121,16 @@ Resources:
       # if SQS lambda crashes
       VisibilityTimeout: 90 # lambda timeout x 6 retries
 
-  BuildOrchestratorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../lambda/build-orchestrator-lambda
-      Events:
-        SQSEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt BuildJobQueue.Arn
-            BatchSize: 1 # one deployment per instance
+  # BuildOrchestratorFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: ../lambda/build-orchestrator-lambda
+  #     Events:
+  #       SQSEvent:
+  #         Type: SQS
+  #         Properties:
+  #           Queue: !GetAtt BuildJobQueue.Arn
+  #           BatchSize: 1 # one deployment per instance
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -216,7 +198,7 @@ Resources:
       Source:
         Type: S3
         Location: !Sub "${UserCodeBucket}/code-uploads/" # TODO
-      LogConfig: # TODO, needed for frontend logs
+      # LogConfig: # TODO, needed for frontend logs
 
   EcrRepository:
     Type: AWS::ECR::Repository
@@ -257,35 +239,33 @@ Resources:
 
   # TODO cloudwatch with retention period to keep logs small
 
+# changing the output names requires renaming in connect-frontend.sh
 Outputs:
-  ApiUrl:
-    Description: "API Base URL"
-    Value: !Sub "https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+  Region:
+    Description: "AWS Region of the stack"
+    Value: !Ref "AWS::Region"
+
+  ApiId:
+    Description: "API ID"
+    Value: !Ref APIGateway
   
   UserPoolId:
     Description: "UserPool ID"
-    Value: !Ref CognitoUserPool
+    Value: !GetAtt AuthStack.Outputs.UserPoolId
   
-  ClientId:
-    Description: "Client ID"
-    Value: !Ref CognitoUserPoolClient
-
-  S3BucketName:
-    Description: "Auto-generated S3 Bucket name"
-    Value: !Ref UserCodeBucket
-
-  DynamoDBTableName:
-    Description: "Auto-generated DynamoDB Table name"
-    Value: !Ref UserMetadataTable
+  UserPoolClientId:
+    Description: "UserPoolClient ID"
+    Value: !GetAtt AuthStack.Outputs.UserPoolClientId
 
   SQSQueueUrl:
     Description: "Auto-generated SQS Queue URL"
     Value: !Ref BuildJobQueue
 
-  CodeBuildName:
-    Description: "Auto-generated CodeBuild name"
-    Value: !Ref CodeBuild
-
   EcrRepositoryUri:
     Description: "ECR Repository URI"
     Value: !GetAtt EcrRepository.RepositoryUri
+
+  # WebBucketName:
+  #   Condition: isNotLocal
+  #   Description: "The S3 bucket for web assets"
+  #   Value: !GetAtt FrontendStack.Outputs.WebBucketName
