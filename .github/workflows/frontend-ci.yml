@@ -1,0 +1,33 @@
+name: Frontend CI checks
+
+on:
+  workflow_call:
+    inputs:
+      module-name:
+        required: true
+        type: string
+
+jobs:
+  build-and-check:
+    name: Build & Check – ${{ inputs.module-name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-just
+
+      - uses: ./.github/actions/setup-node
+        with:
+          module-name: ${{ inputs.module-name }}
+
+      - name: Install dependencies
+        run: just ${{ inputs.module-name }} install
+
+      - name: Lint
+        run: just ${{ inputs.module-name }} lint
+
+      - name: Type Check
+        run: just ${{ inputs.module-name }} type-check
+
+      - name: Build
+        run: just ${{ inputs.module-name }} build

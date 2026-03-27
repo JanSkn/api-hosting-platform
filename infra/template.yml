@@ -19,9 +19,7 @@ Parameters:
     Type: Number
 
 Conditions:
-  isNotLocal: 
-    !Not:
-      - !Equals [ !Ref Environment, local ]
+  isNotLocal: !Not [ !Equals [ !Ref Environment, local ] ]
 
 Resources:
   AuthStack:
@@ -29,11 +27,11 @@ Resources:
     Properties:
       Location: ./nested/auth.yml
 
-  # FrontendStack:
-  #   Type: AWS::Serverless::Application
-  #   Condition: isNotLocal
-  #   Properties:
-  #     Location: ./nested/frontend.yml
+  FrontendStack:
+    Type: AWS::Serverless::Application
+    Condition: isNotLocal
+    Properties:
+      Location: ./nested/frontend.yml
 
   APIGateway:
     Type: AWS::Serverless::Api
@@ -41,7 +39,7 @@ Resources:
       StageName: !Ref Environment
       Cors:
         AllowMethods: "'ANY'" # specified in Quarkus
-        AllowOrigin: "'*'" # !If [isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'"]
+        AllowOrigin: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'" ]
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
@@ -121,16 +119,17 @@ Resources:
       # if SQS lambda crashes
       VisibilityTimeout: 90 # lambda timeout x 6 retries
 
-  # BuildOrchestratorFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     CodeUri: ../lambda/build-orchestrator-lambda
-  #     Events:
-  #       SQSEvent:
-  #         Type: SQS
-  #         Properties:
-  #           Queue: !GetAtt BuildJobQueue.Arn
-  #           BatchSize: 1 # one deployment per instance
+  BuildOrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../lambda/build-orchestrator-lambda/target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BuildJobQueue.Arn
+            BatchSize: 1 # one deployment per instance
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -265,7 +264,7 @@ Outputs:
     Description: "ECR Repository URI"
     Value: !GetAtt EcrRepository.RepositoryUri
 
-  # WebBucketName:
-  #   Condition: isNotLocal
-  #   Description: "The S3 bucket for web assets"
-  #   Value: !GetAtt FrontendStack.Outputs.WebBucketName
+  WebBucketName:
+    Condition: isNotLocal
+    Description: "The S3 bucket for web assets"
+    Value: !GetAtt FrontendStack.Outputs.WebBucketName

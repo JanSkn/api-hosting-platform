@@ -52,3 +52,5 @@ jobs:
     needs: detect-code-changes
     if: needs.detect-code-changes.outputs.frontend-changed == 'true'
     uses: ./.github/workflows/frontend-ci.yml
+    with:
+      module-name: web

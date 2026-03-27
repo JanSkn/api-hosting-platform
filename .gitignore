@@ -35,3 +35,6 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# written by GitHub Workflow in production, locally just for local deployment
+web/public/config.js
