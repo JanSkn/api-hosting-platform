@@ -1,0 +1,38 @@
+version = 0.1
+
+# single source of truth: stack name, region and env variables set here and read from
+# deployment scripts and Lambda Java code
+
+[local.deploy.parameters]
+stack_name = "apiforge-local"
+region = "eu-central-1"
+resolve_s3 = true # auto-created S3 bucket for the template
+capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+parameter_overrides = [
+    "Environment=dev", 
+    "AwsRegion=eu-central-1",
+    "LambdaMemory=128"
+]
+
+# todo  frontend url von stg und prod
+
+[staging.deploy.parameters]
+stack_name = "apiforge-stg"
+region = "eu-central-1"
+parameter_overrides = [
+    "Environment=stg", 
+    "AwsRegion=eu-central-1", 
+    "LambdaMemory=128"
+]
+
+[prod.deploy.parameters]
+stack_name = "apiforge-prod"
+region = "eu-central-1"
+parameter_overrides = [
+    "Environment=prod", 
+    "AwsRegion=eu-central-1", 
+    "LambdaMemory=256"
+]
+
+#todo siehe https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-sam/
+#setzt diese env variablen, hab aber anderen localhost url

@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Auth Stack
+
+# for postman integration, see https://github.com/aws-samples/serverless-patterns/blob/main/cognito-httpapi/auth.yaml#L46
+
+Resources:
+  # TODO, change when user should verify email (sets user as CONFIRMED)
+  # Note: without, localstack will send code in logs
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    # see https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-sign-up.html
+    Properties:
+      InlineCode: |
+        exports.handler = async (event) => {
+          event.response.autoConfirmUser = true;
+          return event;
+        };
+      Handler: index.handler
+      Runtime: nodejs18.x
+
+  # see README here
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      # TODO, see above, no verification
+      # AutoVerifiedAttributes:
+      #   - email
+      UsernameAttributes:
+        - email
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpFunction.Arn
+      Policies:
+        MinimumLength: 8
+        RequireNumbers: true
+        RequireLowerCase: true
+        RequireUpperCase: true
+        RequireSymbols: true
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      SupportedIdentityProviders:
+        - COGNITO
+    
+Outputs:
+  UserPoolArn:
+    Value: !GetAtt UserPool.Arn
+
+  UserPoolId:
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+
+  Issuer:
+    Value: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}

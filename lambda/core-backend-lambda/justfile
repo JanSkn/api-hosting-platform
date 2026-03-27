@@ -1,0 +1,11 @@
+lint:
+    ../mvnw spotless:check
+
+code-analysis:
+    ../mvnw pmd:check pmd:cpd-check
+
+build:
+    ../mvnw clean package -DskipTests --no-transfer-progress
+
+unit-test:
+    ../mvnw test --no-transfer-progress

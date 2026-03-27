@@ -1,0 +1,56 @@
+name: CI Orchestrator
+on:    
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-code-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend-changed: ${{ steps.filter.outputs.frontend }}
+      build-orchestrator-changed: ${{ steps.filter.outputs.build-orchestrator }}
+      common-utils-changed: ${{ steps.filter.outputs.common-utils }}
+      core-backend-changed: ${{ steps.filter.outputs.core-backend }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'web/**'
+            build-orchestrator:
+              - 'lambda/build-orchestrator-lambda/**'
+            common-utils:
+              - 'lambda/common-utils/**'
+            core-backend:
+              - 'lambda/core-backend-lambda/**'
+
+  run-build-orchestrator-ci-checks:
+    needs: detect-code-changes
+    if: needs.detect-code-changes.outputs.build-orchestrator-changed == 'true'
+    uses: ./.github/workflows/backend-ci.yml
+    with:
+      module-name: build-orchestrator-lambda
+
+  run-common-utils-ci-checks:
+    needs: detect-code-changes
+    if: needs.detect-code-changes.outputs.common-utils-changed == 'true'
+    uses: ./.github/workflows/backend-ci.yml
+    with:
+      module-name: common-utils
+
+  run-core-backend-ci-checks:
+    needs: detect-code-changes
+    if: needs.detect-code-changes.outputs.core-backend-changed == 'true'
+    uses: ./.github/workflows/backend-ci.yml
+    with:
+      module-name: core-backend-lambda
+
+  run-frontend-ci-checks:
+    needs: detect-code-changes
+    if: needs.detect-code-changes.outputs.frontend-changed == 'true'
+    uses: ./.github/workflows/frontend-ci.yml
+    with:
+      module-name: web

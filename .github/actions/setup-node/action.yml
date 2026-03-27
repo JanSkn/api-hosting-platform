@@ -1,0 +1,13 @@
+name: Setup Node
+inputs:
+  module-name:
+    description: 'Provide the module name to locate package-lock.json'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: './${{ inputs.module-name }}/package-lock.json'

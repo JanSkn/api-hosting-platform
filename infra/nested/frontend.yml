@@ -1,0 +1,117 @@
+# see https://github.com/aws-samples/amazon-cloudfront-secure-static-site/tree/master/templates
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Frontend Stack
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  # only CloudFront can access the bucket
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: s3:GetObject
+            Principal:
+              Service: "cloudfront.amazonaws.com"
+            Effect: Allow
+            Resource: !Sub "${S3Bucket.Arn}/*"
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - DomainName: !GetAtt S3Bucket.DomainName
+            Id: S3BucketOrigin # custom ID
+            OriginAccessControlId: !Ref OriginAccessControl
+            S3OriginConfig:
+              # using OriginAccessControl (below) instead, but localstack throws error otherwise
+              OriginAccessIdentity: "" 
+        DefaultCacheBehavior:
+          # how long content is cached for next user without S3 request
+          Compress: true
+          DefaultTTL: 86400
+          ForwardedValues:
+            QueryString: true
+          MaxTTL: 31536000
+          TargetOriginId: S3BucketOrigin # must be same ID as defined under Origins
+          ViewerProtocolPolicy: "redirect-to-https"
+          ResponseHeadersPolicyId: !Ref ResponseHeadersPolicy
+        CustomErrorResponses:
+        # React is SPA, quick and dirty fix (instead of extra lambda function)
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+            ErrorCachingMinTTL: 0
+        HttpVersion: "http2"
+        DefaultRootObject: "index.html" # entry point
+        IPV6Enabled: true
+        PriceClass: "PriceClass_100"
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        # Name must be unique within account
+        Name: !Sub
+          - amzn-secure-static-site-${guid}
+          - guid: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  ResponseHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${AWS::StackName}-static-site-security-headers'
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: true
+            Override: true
+            Preload: true
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: 'same-origin'
+            Override: true
+          XSSProtection:
+            ModeBlock: true
+            Override: true
+            Protection: true
+
+Outputs:
+  CloudFrontDistribution:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  WebBucketName:
+    Value: !Ref S3Bucket
