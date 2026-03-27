@@ -5,7 +5,7 @@ code-analysis:
     ../mvnw pmd:check pmd:cpd-check
 
 build:
-    ../mvnw package -DskipTests --no-transfer-progress
+    ../mvnw clean package -DskipTests --no-transfer-progress
 
 unit-test:
     ../mvnw test --no-transfer-progress
