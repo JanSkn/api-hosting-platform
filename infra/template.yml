@@ -17,6 +17,8 @@ Parameters:
     Type: String
   LambdaMemory:
     Type: Number
+  MaxDeploymentsPerUser:
+    Type: Number
 
 Conditions:
   isNotLocal: !Not [ !Equals [ !Ref Environment, local ] ]
@@ -57,6 +59,15 @@ Resources:
         - arm64
       MemorySize: !Ref LambdaMemory
       Events:
+        # set health check endpoint unauthenticated
+        HealthEvent:
+          Type: Api
+          Properties:
+            Path: /api/v1/health
+            Method: GET
+            RestApiId: !Ref APIGateway
+            Auth:
+              Authorizer: NONE
         ApiGatewayEvent:
           Type: Api
           Properties:
@@ -67,6 +78,7 @@ Resources:
         Variables:
           ENV: !Ref Environment
           AWS_REGION: !Ref AwsRegion # that deployment region and lambda region are the same
+          MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser # for build orchestrator lambda to check before starting a build
           BUILD_QUEUE_URL: !Ref BuildJobQueue # for sending build requests from core backend to build orchestrator lambda
           USER_CODE_BUCKET: !Ref UserCodeBucket # for generating presigned URLs for user code uploads
       Policies:
@@ -76,12 +88,13 @@ Resources:
         - S3WritePolicy:
             BucketName: !Ref UserCodeBucket
         - DynamoDBCrudPolicy:
-            TableName: !Ref UserMetadataTable
+            TableName: !Ref DeploymentsMetadataTable
 
-  UserMetadataTable:
+  DeploymentsMetadataTable:
   # not AWS::Serverless:SimpleTable for secondary key
     Type: AWS::DynamoDB::Table
     Properties:
+      Name: "deployments-metadata"
       BillingMode: PAY_PER_REQUEST 
       AttributeDefinitions:
         - AttributeName: userId
@@ -208,7 +221,7 @@ Resources:
         # first rule would only apply if updated image with same tag
         # --> old gets untagged
         # (only if user can update a deployment)
-        LifecyclePolicyText: |
+        LifecyclePolicyText: !Sub |
           {
             "rules": [
               {
@@ -229,7 +242,7 @@ Resources:
                   "tagStatus": "tagged",
                   "tagPrefixList": ["user-"],
                   "countType": "imageCountMoreThan",
-                  "countNumber": 3
+                  "countNumber": ${MaxDeploymentsPerUser}
                 },
                 "action": { "type": "expire" }
               }

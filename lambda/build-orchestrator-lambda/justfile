@@ -1,6 +1,9 @@
 lint:
     ../mvnw spotless:check
 
+format:
+    ../mvnw spotless:apply
+
 code-analysis:
     ../mvnw pmd:check pmd:cpd-check
 
