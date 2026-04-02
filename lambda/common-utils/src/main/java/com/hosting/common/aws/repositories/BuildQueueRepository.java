@@ -5,13 +5,15 @@ import com.hosting.common.aws.dynamo.models.Deployment;
 import com.hosting.common.aws.sqs.models.BuildMessage;
 import com.hosting.common.config.ProjectConfig;
 import com.hosting.common.exceptions.SQSBuildJobNotEnqueuedException;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
+@ApplicationScoped
 public class BuildQueueRepository {
-  private final SqsClient sqsClient;
-  private final ObjectMapper objectMapper;
+  private SqsClient sqsClient;
+  private ObjectMapper objectMapper;
 
   @Inject
   public BuildQueueRepository(SqsClient sqsClient, ObjectMapper objectMapper) {

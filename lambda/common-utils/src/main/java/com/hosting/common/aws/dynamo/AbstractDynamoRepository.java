@@ -15,7 +15,10 @@ import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 public abstract class AbstractDynamoRepository<T> {
 
   protected DynamoDbTable<T> table;
-  private final Class<T> entityClass;
+
+  protected AbstractDynamoRepository() {
+    // Required by CDI (Quarkus) for proxy generation
+  }
 
   // We inject the DynamoDbEnhancedClient in the concrete subclass rather than here
   // because CDI (Quarkus) creates beans from concrete classes. Additionally, the concrete class
@@ -23,7 +26,6 @@ public abstract class AbstractDynamoRepository<T> {
   protected AbstractDynamoRepository(
       DynamoDbEnhancedClient enhancedClient, String tableName, Class<T> entityClass) {
     this.table = enhancedClient.table(tableName, TableSchema.fromBean(entityClass));
-    this.entityClass = entityClass;
   }
 
   public Optional<T> get(String partitionKey, String sortKey) {

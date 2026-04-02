@@ -7,12 +7,12 @@ Description: Backend and Frontend setup for APIForge.
 
 Globals:
   Function:
-    Runtime: java25
+    Runtime: java21
 
 Parameters:
   Environment:
     Type: String
-    AllowedValues: [dev, stg, prod]
+    AllowedValues: [local, stg, prod]
   AwsRegion:
     Type: String
   LambdaMemory:
@@ -39,11 +39,14 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: !Ref Environment
+      # as we set the gateway as proxy, it does not add any CORS headers, so we set them in Quarkus (application.properties) and let API Gateway forward them
       Cors:
-        AllowMethods: "'ANY'" # specified in Quarkus
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Accept,Authorization,Content-Type,X-Requested-With'"
         AllowOrigin: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'" ]
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt AuthStack.Outputs.UserPoolArn
@@ -78,6 +81,8 @@ Resources:
         Variables:
           ENV: !Ref Environment
           AWS_REGION: !Ref AwsRegion # that deployment region and lambda region are the same
+          # for CORS header in lambda responses, set by Quarkus in application.properties
+          ALLOWED_ORIGIN: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
           MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser # for build orchestrator lambda to check before starting a build
           BUILD_QUEUE_URL: !Ref BuildJobQueue # for sending build requests from core backend to build orchestrator lambda
           USER_CODE_BUCKET: !Ref UserCodeBucket # for generating presigned URLs for user code uploads
@@ -132,17 +137,17 @@ Resources:
       # if SQS lambda crashes
       VisibilityTimeout: 90 # lambda timeout x 6 retries
 
-  BuildOrchestratorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../lambda/build-orchestrator-lambda/target/function.zip
-      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
-      Events:
-        SQSEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt BuildJobQueue.Arn
-            BatchSize: 1 # one deployment per instance
+  # BuildOrchestratorFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: ../lambda/build-orchestrator-lambda/target/function.zip
+  #     Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+  #     Events:
+  #       SQSEvent:
+  #         Type: SQS
+  #         Properties:
+  #           Queue: !GetAtt BuildJobQueue.Arn
+  #           BatchSize: 1 # one deployment per instance
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role

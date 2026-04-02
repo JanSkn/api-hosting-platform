@@ -29,12 +29,16 @@ lerna-debug.log*
 hs_err_pid*
 replay_pid*
 
+.DS_Store
+
 target
 
 node_modules
 dist
 dist-ssr
 *.local
+
+localstack/volume
 
 # written by GitHub Workflow in production, locally just for local deployment
 web/public/config.js
