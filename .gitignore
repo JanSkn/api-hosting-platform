@@ -42,3 +42,6 @@ localstack/volume
 
 # written by GitHub Workflow in production, locally just for local deployment
 web/public/config.js
+
+# custom files for quick ideas
+.ideas
