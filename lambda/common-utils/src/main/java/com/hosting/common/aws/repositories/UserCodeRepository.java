@@ -13,8 +13,8 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 
 @ApplicationScoped
 public class UserCodeRepository {
-  private final S3Client s3Client;
-  private final S3Presigner s3Presigner;
+  private S3Client s3Client;
+  private S3Presigner s3Presigner;
 
   @Inject
   public UserCodeRepository(

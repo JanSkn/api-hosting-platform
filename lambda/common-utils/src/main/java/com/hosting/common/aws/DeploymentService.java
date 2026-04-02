@@ -16,9 +16,9 @@ import java.util.Optional;
 @ApplicationScoped
 public class DeploymentService {
 
-  public final DeploymentMetadataRepository deploymentMetadata;
-  public final UserCodeRepository userCode;
-  public final BuildQueueRepository buildQueue;
+  public DeploymentMetadataRepository deploymentMetadata;
+  public UserCodeRepository userCode;
+  public BuildQueueRepository buildQueue;
 
   @Inject
   public DeploymentService(

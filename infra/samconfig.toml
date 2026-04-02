@@ -9,12 +9,11 @@ region = "eu-central-1"
 resolve_s3 = true # auto-created S3 bucket for the template
 capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
 parameter_overrides = [
-    "Environment=dev", 
+    "Environment=local", 
     "AwsRegion=eu-central-1",
-    "LambdaMemory=128"
+    "LambdaMemory=128",
+    "MaxDeploymentsPerUser=5"
 ]
-
-# todo  frontend url von stg und prod
 
 [staging.deploy.parameters]
 stack_name = "apiforge-stg"
@@ -22,7 +21,8 @@ region = "eu-central-1"
 parameter_overrides = [
     "Environment=stg", 
     "AwsRegion=eu-central-1", 
-    "LambdaMemory=128"
+    "LambdaMemory=128",
+    "MaxDeploymentsPerUser=5"
 ]
 
 [prod.deploy.parameters]
@@ -31,8 +31,6 @@ region = "eu-central-1"
 parameter_overrides = [
     "Environment=prod", 
     "AwsRegion=eu-central-1", 
-    "LambdaMemory=256"
+    "LambdaMemory=256",
+    "MaxDeploymentsPerUser=5"
 ]
-
-#todo siehe https://docs.localstack.cloud/aws/integrations/aws-native-tools/aws-sam/
-#setzt diese env variablen, hab aber anderen localhost url

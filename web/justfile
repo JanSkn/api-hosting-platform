@@ -1,0 +1,11 @@
+install:
+    npm ci
+
+lint:
+    npm run lint
+
+type-check:
+    npx tsc -b
+
+build:
+    npm run build

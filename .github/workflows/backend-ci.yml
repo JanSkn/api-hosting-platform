@@ -14,7 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-java-maven
       - uses: ./.github/actions/setup-just
+
+      - name: Local install of shared modules
+        run: just lambda install
 
       - name: Spotless Check
         run: just ${{ inputs.module-name }} lint
@@ -31,8 +35,8 @@ jobs:
       - uses: ./.github/actions/setup-java-maven
       - uses: ./.github/actions/setup-just
 
-      - name: Compile & Package
-        run: just ${{ inputs.module-name }} build
+      - name: Create Build Artifact
+        run: just lambda install
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
