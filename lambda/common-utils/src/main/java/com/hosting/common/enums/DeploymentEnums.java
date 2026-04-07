@@ -2,6 +2,7 @@ package com.hosting.common.enums;
 
 public class DeploymentEnums {
   public enum Status {
+    INITIALIZED,
     UPLOADING, // user code upload in progress (S3 presigned URL generated, waiting for code upload)
     IN_PROGRESS,
     FAILED,

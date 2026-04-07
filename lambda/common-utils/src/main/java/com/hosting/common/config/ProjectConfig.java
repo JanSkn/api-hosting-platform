@@ -14,7 +14,8 @@ public class ProjectConfig {
   }
 
   public static class DynamoDB {
-    public static final String DEPLOYMENTS_METADATA_TABLE = System.getenv("DEPLOYMENTS_METADATA_TABLE");
+    public static final String DEPLOYMENTS_METADATA_TABLE =
+        System.getenv("DEPLOYMENTS_METADATA_TABLE");
   }
 
   public static class S3 {
