@@ -33,7 +33,11 @@ public class UserCodeRepository {
         PutObjectPresignRequest.builder()
             .signatureDuration(Duration.ofSeconds(ProjectConfig.S3.PRESIGNED_EXPIRATION_SECONDS))
             .putObjectRequest(
-                req -> req.bucket(ProjectConfig.S3.USER_CODE_BUCKET).key(objectKey).build())
+                req ->
+                    req.bucket(ProjectConfig.S3.USER_CODE_BUCKET)
+                        .key(objectKey)
+                        .contentType("application/zip")
+                        .build())
             .build();
     PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
     String uploadUrl = presignedRequest.url().toString();

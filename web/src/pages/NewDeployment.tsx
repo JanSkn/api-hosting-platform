@@ -23,6 +23,7 @@ const NewDeployment = () => {
   const [step, setStep] = useState(1);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [repoUrl, setRepoUrl] = useState("");
   const [apiName, setApiName] = useState("");
   const [language, setLanguage] = useState("");
@@ -53,12 +54,20 @@ const NewDeployment = () => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file?.name.endsWith(".zip")) { setFileName(file.name); setRepoUrl(""); }
+    if (file?.name.endsWith(".zip")) {
+       setFileName(file.name);
+       setSelectedFile(file);
+       setRepoUrl("");
+    }
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) { setFileName(file.name); setRepoUrl(""); }
+    if (file) { 
+      setFileName(file.name);
+      setSelectedFile(file);
+      setRepoUrl("");
+    }
   };
 
   const addEnvVar = () => setEnvVars([...envVars, { key: "", value: "" }]);
@@ -75,8 +84,8 @@ const NewDeployment = () => {
     createDeployment.mutate(
       {
         name: apiName,
-        runtime: language === "python" ? "python" : "node",
-        source: fileName || repoUrl,
+        runtime: language as "node" | "python" | "java",
+        source: selectedFile || repoUrl,
         envVars,
       },
       {

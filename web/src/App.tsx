@@ -11,6 +11,7 @@ import DeploymentDetails from "./pages/DeploymentDetails.tsx";
 import Documentation from "./pages/Documentation.tsx";
 import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
 
 import AmplifyLoginTest from "./pages/AmplifyLoginTest.tsx";
 
@@ -23,14 +24,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/login-test" element={<AmplifyLoginTest />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/new" element={<NewDeployment />} />
-          <Route path="/deployment/:id" element={<DeploymentDetails />} />
-          <Route path="/docs" element={<Documentation />} />
-          <Route path="/settings" element={<Settings />} />
+
+          {/* Protected routes – redirect to /login if not authenticated */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/new" element={<NewDeployment />} />
+            <Route path="/deployment/:id" element={<DeploymentDetails />} />
+            <Route path="/docs" element={<Documentation />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
