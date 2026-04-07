@@ -2,6 +2,7 @@ package com.hosting.core.resource;
 
 import com.hosting.common.aws.DeploymentService;
 import com.hosting.common.dto.CreateDeploymentRequest;
+import com.hosting.common.dto.CreateDeploymentResponse;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import jakarta.enterprise.context.RequestScoped;
@@ -55,9 +56,10 @@ public class DeploymentResource extends BaseResource {
   public Response initializeDeployment(CreateDeploymentRequest request) {
     String userId = claims.getUserId();
 
-    deploymentService.initializeDeployment(userId, request);
+    String deploymentId = deploymentService.initializeDeployment(userId, request);
+    CreateDeploymentResponse response = new CreateDeploymentResponse(deploymentId);
 
-    return createResponse(Response.Status.OK, "Deployment initialized");
+    return createResponse(Response.Status.OK, response);
   }
 
   @GET
