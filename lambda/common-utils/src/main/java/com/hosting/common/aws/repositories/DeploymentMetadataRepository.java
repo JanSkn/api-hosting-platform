@@ -12,7 +12,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 @ApplicationScoped
 public class DeploymentMetadataRepository extends AbstractDynamoRepository<Deployment> {
   private static final String TABLE_NAME =
-      "deployments-metadata"; // must match the table name in SAM template.yml
+      ProjectConfig.DynamoDB.DEPLOYMENTS_METADATA_TABLE;
 
   @Inject
   public DeploymentMetadataRepository(DynamoDbEnhancedClient dynamoDbClient) {
