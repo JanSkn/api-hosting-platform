@@ -13,6 +13,10 @@ public class ProjectConfig {
         Integer.parseInt(System.getenv("MAX_DEPLOYMENTS_PER_USER"));
   }
 
+  public static class DynamoDB {
+    public static final String DEPLOYMENTS_METADATA_TABLE = System.getenv("DEPLOYMENTS_METADATA_TABLE");
+  }
+
   public static class S3 {
     public static final String USER_CODE_BUCKET = System.getenv("USER_CODE_BUCKET");
     public static final String USER_CODE_PREFIX = System.getenv("USER_CODE_BUCKET_PREFIX");

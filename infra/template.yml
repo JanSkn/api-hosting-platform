@@ -19,6 +19,9 @@ Parameters:
     Type: Number
   MaxDeploymentsPerUser:
     Type: Number
+  DeploymentsMetadataTableName:
+    Type: String
+    Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
     Default: "code-uploads/"
@@ -86,6 +89,7 @@ Resources:
           AWS_REGION: !Ref AwsRegion # that deployment region and lambda region are the same
           # for CORS header in lambda responses, set by Quarkus in application.properties
           ALLOWED_ORIGIN: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
+          DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable # for core backend lambda to read/write deployment metadata
           MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser # for build orchestrator lambda to check before starting a build
           BUILD_QUEUE_URL: !Ref BuildJobQueue # for sending build requests from core backend to build orchestrator lambda
           USER_CODE_BUCKET: !Ref UserCodeBucket # for generating presigned URLs for user code uploads
@@ -103,7 +107,7 @@ Resources:
   # not AWS::Serverless:SimpleTable for secondary key
     Type: AWS::DynamoDB::Table
     Properties:
-      Name: "deployments-metadata"
+      TableName: !Ref DeploymentsMetadataTableName
       BillingMode: PAY_PER_REQUEST 
       AttributeDefinitions:
         - AttributeName: userId
