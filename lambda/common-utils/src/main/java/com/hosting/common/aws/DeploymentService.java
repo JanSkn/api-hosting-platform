@@ -43,7 +43,7 @@ public class DeploymentService {
     return deploymentOpt.map(Deployment::getStatus).map(Status::toString);
   }
 
-  public UploadUrlResponse createDeployment(String userId) {
+  public UploadUrlResponse initializeDeployment(String userId) {
     String deploymentId = java.util.UUID.randomUUID().toString();
     Deployment deployment = new Deployment();
     deployment.setUserId(userId);
