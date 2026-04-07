@@ -19,6 +19,9 @@ Parameters:
     Type: Number
   MaxDeploymentsPerUser:
     Type: Number
+  UserCodeBucketPrefix:
+    Type: String
+    Default: "code-uploads/"
 
 Conditions:
   isNotLocal: !Not [ !Equals [ !Ref Environment, local ] ]
@@ -86,6 +89,7 @@ Resources:
           MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser # for build orchestrator lambda to check before starting a build
           BUILD_QUEUE_URL: !Ref BuildJobQueue # for sending build requests from core backend to build orchestrator lambda
           USER_CODE_BUCKET: !Ref UserCodeBucket # for generating presigned URLs for user code uploads
+          USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
       Policies:
         # generate presigned S3 URLs
         - S3ReadPolicy:
@@ -214,7 +218,7 @@ Resources:
             Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/user-apps"
       Source:
         Type: S3
-        Location: !Sub "${UserCodeBucket}/code-uploads/" # TODO
+        Location: !Sub "${UserCodeBucket}/${UserCodeBucketPrefix}"
       # LogConfig: # TODO, needed for frontend logs
 
   EcrRepository:

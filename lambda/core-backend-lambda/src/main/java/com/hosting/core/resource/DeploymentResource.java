@@ -52,7 +52,7 @@ public class DeploymentResource extends BaseResource {
   public Response generateS3CodeUploadUrl() {
     String userId = claims.getUserId();
 
-    UploadUrlResponse response = deploymentService.createDeployment(userId);
+    UploadUrlResponse response = deploymentService.initializeDeployment(userId);
 
     return createResponse(Response.Status.OK, response);
   }
