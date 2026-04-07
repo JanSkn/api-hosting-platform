@@ -12,9 +12,11 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
 public class Deployment {
   private String userId;
   private String deploymentId;
+  private String name;
   private String buildId;
   private Status status;
   private Runtime runtime;
+  private String s3ObjectKey; // user code location in S3
   private String apiId;
   private String apiUri;
   private String errorMessage;
@@ -40,6 +42,14 @@ public class Deployment {
     this.deploymentId = deploymentId;
   }
 
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
   public String getBuildId() {
     return buildId;
   }
@@ -62,6 +72,14 @@ public class Deployment {
 
   public void setRuntime(Runtime runtime) {
     this.runtime = runtime;
+  }
+
+  public String getS3ObjectKey() {
+    return s3ObjectKey;
+  }
+
+  public void setS3ObjectKey(String s3ObjectKey) {
+    this.s3ObjectKey = s3ObjectKey;
   }
 
   public String getApiId() {
@@ -101,9 +119,11 @@ public class Deployment {
     return new StringJoiner(", ", Deployment.class.getSimpleName() + "[", "]")
         .add("userId='" + userId + "'")
         .add("deploymentId='" + deploymentId + "'")
+        .add("name='" + name + "'")
         .add("buildId='" + buildId + "'")
         .add("status='" + status + "'")
         .add("runtime='" + runtime + "'")
+        .add("s3ObjectKey='" + s3ObjectKey + "'")
         .add("apiId='" + apiId + "'")
         .add("apiUri='" + apiUri + "'")
         .add("errorMessage='" + errorMessage + "'")
