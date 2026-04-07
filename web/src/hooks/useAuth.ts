@@ -5,6 +5,7 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: ["currentUser"],
     queryFn: authApi.getCurrentUser,
+    staleTime: 10 * 60 * 1000, // User profile doesn't change often
   });
 }
 

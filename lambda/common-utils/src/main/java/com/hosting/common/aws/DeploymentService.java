@@ -64,6 +64,7 @@ public class DeploymentService {
     Deployment deployment = new Deployment();
     deployment.setUserId(userId);
     deployment.setDeploymentId(deploymentId);
+    deployment.setName(request.name());
     deployment.setRuntime(request.runtime());
     deployment.setS3ObjectKey(userCode.generateObjectKey(userId, deploymentId));
     deployment.setStatus(Status.INITIALIZED);

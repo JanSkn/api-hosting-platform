@@ -6,7 +6,7 @@ export interface BuildLog {
   msg: string;
 }
 
-export type DeploymentRuntime = "JAVA_17" | "NODEJS_18_X";
+export type DeploymentRuntime = "JAVA_17" | "NODEJS_18_X" | "PYTHON_3_12";
 export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FAILED" | "LIVE";
 
 export interface CreateDeploymentRequest {

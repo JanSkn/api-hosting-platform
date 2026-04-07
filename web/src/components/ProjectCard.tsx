@@ -11,7 +11,7 @@ export interface Deployment {
   status: DeploymentStatus;
   apiUri: string;
   createdAt: number;
-  runtime: "JAVA_17" | "NODEJS_18_X";
+  runtime: "JAVA_17" | "NODEJS_18_X" | "PYTHON_3_12";
 }
 
 export const statusConfig: Record<string, { label: string; dotClass: string; textClass: string }> = {
@@ -25,6 +25,7 @@ export const statusConfig: Record<string, { label: string; dotClass: string; tex
 const runtimeLabels = {
   NODEJS_18_X: "Node.js 18",
   JAVA_17: "Java 17",
+  PYTHON_3_12: "Python 3.12",
 };
 
 export function ProjectCard({ deployment }: { deployment: Deployment }) {
