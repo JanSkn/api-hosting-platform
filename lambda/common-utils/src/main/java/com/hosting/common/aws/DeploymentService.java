@@ -59,7 +59,7 @@ public class DeploymentService {
   }
 
   // we don't set createdAt here because we will set it after deployment completed
-  public void initializeDeployment(String userId, CreateDeploymentRequest request) {
+  public String initializeDeployment(String userId, CreateDeploymentRequest request) {
     String deploymentId = java.util.UUID.randomUUID().toString();
     Deployment deployment = new Deployment();
     deployment.setUserId(userId);
@@ -68,6 +68,8 @@ public class DeploymentService {
     deployment.setS3ObjectKey(userCode.generateObjectKey(userId, deploymentId));
     deployment.setStatus(Status.INITIALIZED);
     deploymentMetadata.put(deployment); // will fail if more than allowed deployments per user
+
+    return deploymentId;
   }
 
   public void triggerDeployment(String userId, String deploymentId) {
