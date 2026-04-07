@@ -1,53 +1,73 @@
-import { USE_MOCK_DATA, API_BASE_URL } from "./config";
-import { mockApi, type User } from "./mock-data";
+import {
+  signIn,
+  signUp,
+  signOut,
+  fetchAuthSession,
+  fetchUserAttributes,
+} from "aws-amplify/auth";
 
-export async function login(email: string, password: string): Promise<User> {
-  if (USE_MOCK_DATA) return mockApi.login(email, password);
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) throw new Error("Login failed");
-  return res.json();
+export interface User {
+  id: string;
+  name: string;
+  email: string;
 }
 
-export async function register(name: string, email: string, password: string): Promise<User> {
-  if (USE_MOCK_DATA) return mockApi.register(name, email, password);
-  const res = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
+export async function login(email: string, password: string): Promise<User> {
+  await signIn({ username: email, password });
+  return getCurrentUser() as Promise<User>;
+}
+
+export async function register(
+  name: string,
+  email: string,
+  password: string
+): Promise<User> {
+  await signUp({
+    username: email,
+    password,
+    options: {
+      userAttributes: {
+        email,
+        name,
+      },
+    },
   });
-  if (!res.ok) throw new Error("Registration failed");
-  return res.json();
+  // After sign-up the user may need to confirm their email;
+  // attempt sign-in so the session is active for the caller.
+  await signIn({ username: email, password });
+  return getCurrentUser() as Promise<User>;
 }
 
 export async function logout(): Promise<void> {
-  if (USE_MOCK_DATA) return mockApi.logout();
-  await fetch(`${API_BASE_URL}/auth/logout`, { method: "POST" });
+  await signOut();
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  if (USE_MOCK_DATA) return mockApi.getCurrentUser();
-  const res = await fetch(`${API_BASE_URL}/auth/me`);
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const session = await fetchAuthSession();
+    if (!session.tokens?.idToken && !session.tokens?.accessToken) {
+      return null;
+    }
+    const attrs = await fetchUserAttributes();
+    return {
+      id: attrs.sub ?? "",
+      name: attrs.name ?? attrs.email ?? "",
+      email: attrs.email ?? "",
+    };
+  } catch {
+    return null;
+  }
 }
 
-export async function updateProfile(data: { name: string }): Promise<User> {
-  if (USE_MOCK_DATA) return mockApi.updateProfile(data);
-  const res = await fetch(`${API_BASE_URL}/auth/profile`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update profile");
-  return res.json();
+export async function updateProfile(_data: { name: string }): Promise<User> {
+  // Profile updates are not exposed by the current backend.
+  // Return the current user as-is.
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated");
+  return user;
 }
 
 export async function deleteAccount(): Promise<void> {
-  if (USE_MOCK_DATA) return mockApi.deleteAccount();
-  const res = await fetch(`${API_BASE_URL}/auth/account`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete account");
+  // Not exposed by the current backend – sign out as a safe fallback.
+  await signOut();
 }

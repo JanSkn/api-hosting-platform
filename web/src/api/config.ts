@@ -1,3 +1,2 @@
-export const USE_MOCK_DATA = true;
-
-export const API_BASE_URL = "/api";
+// No more mock flag – all API calls go to the real backend.
+// The base URL is constructed in src/config.ts via getApiBaseUrl().

@@ -3,7 +3,7 @@ import { Copy, Check, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
-export type DeploymentStatus = "live" | "building" | "error";
+export type DeploymentStatus = "LIVE" | "IN_PROGRESS" | "FAILED" | "UPLOADING"; // defined in backend
 
 export interface Deployment {
   id: string;
@@ -14,11 +14,13 @@ export interface Deployment {
   runtime: "node" | "python";
 }
 
-const statusConfig = {
-  live: { label: "Live", dotClass: "bg-status-live", textClass: "text-status-live" },
-  building: { label: "Building", dotClass: "bg-status-building animate-pulse-dot", textClass: "text-status-building" },
-  error: { label: "Error", dotClass: "bg-status-error", textClass: "text-status-error" },
+export const statusConfig: Record<string, { label: string; dotClass: string; textClass: string }> = {
+  LIVE: { label: "Live", dotClass: "bg-status-live", textClass: "text-status-live" },
+  IN_PROGRESS: { label: "Building", dotClass: "bg-status-building animate-pulse-dot", textClass: "text-status-building" },
+  FAILED: { label: "Error", dotClass: "bg-status-error", textClass: "text-status-error" },
+  UPLOADING: { label: "Uploading", dotClass: "bg-status-building animate-pulse-dot", textClass: "text-status-building" },
 };
+
 
 const runtimeLabels = {
   node: "Node.js",
@@ -28,7 +30,12 @@ const runtimeLabels = {
 export function ProjectCard({ deployment }: { deployment: Deployment }) {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const status = statusConfig[deployment.status];
+  const status = statusConfig[deployment.status] || {
+    label: deployment.status,
+    dotClass: "bg-muted",
+    textClass: "text-muted-foreground"
+  };
+
 
   const copyUrl = (e: React.MouseEvent) => {
     e.stopPropagation();

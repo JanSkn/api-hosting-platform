@@ -26,7 +26,7 @@ export function AppHeader() {
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "JD";
+    : user?.email?.[0]?.toUpperCase() ?? "?";
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -92,7 +92,7 @@ export function AppHeader() {
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium text-foreground hidden sm:inline">
-                {user?.name ?? "John Doe"}
+                {user?.name ?? user?.email ?? ""}
               </span>
             </button>
           </DropdownMenuTrigger>
