@@ -18,7 +18,7 @@ const DeploymentDetails = () => {
   const [copied, setCopied] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const functionUrl = deployment?.url ?? "https://a1b2c3.lambda-url.us-east-1.on.aws";
+  const functionUrl = deployment?.apiUri;
   const currentStatus = deployment?.status ? statusConfig[deployment.status] : null;
 
   useEffect(() => {
@@ -88,7 +88,7 @@ const DeploymentDetails = () => {
           </div>
         </div>
 
-        {isComplete && (
+        {deployment?.status === "LIVE" && functionUrl && (
           <div className="bg-card border border-status-live/20 rounded-lg p-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-status-live/10 mb-4">
               <Check className="h-6 w-6 text-status-live" />
