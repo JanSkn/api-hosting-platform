@@ -21,10 +21,14 @@ public class BuildQueueRepository {
     this.objectMapper = objectMapper;
   }
 
-  public void pushToBuildQueue(Deployment deployment, String s3ObjectKey) {
+  public void pushToBuildQueue(Deployment deployment) {
     try {
       BuildMessage message =
-          new BuildMessage(deployment.getDeploymentId(), deployment.getUserId(), s3ObjectKey);
+          new BuildMessage(
+              deployment.getDeploymentId(),
+              deployment.getUserId(),
+              deployment.getRuntime(),
+              deployment.getS3ObjectKey());
       String jsonMessage = objectMapper.writeValueAsString(message);
 
       SendMessageRequest sendMsgRequest =

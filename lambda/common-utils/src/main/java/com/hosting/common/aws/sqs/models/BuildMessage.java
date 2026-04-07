@@ -1,3 +1,6 @@
 package com.hosting.common.aws.sqs.models;
 
-public record BuildMessage(String deploymentId, String userId, String s3ObjectKey) {}
+import com.hosting.common.enums.DeploymentEnums.Runtime;
+
+public record BuildMessage(
+    String deploymentId, String userId, Runtime runtime, String s3ObjectKey) {}
