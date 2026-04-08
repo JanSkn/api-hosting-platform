@@ -44,6 +44,10 @@ public final class ProjectConfig {
     public static final URI BUILD_QUEUE_URL = URI.create(System.getenv("BUILD_QUEUE_URL"));
   }
 
+  public static class Cognito {
+    public static final String USER_POOL_ID = System.getenv("COGNITO_USER_POOL_ID");
+  }
+
   public static boolean isLocal() {
     return "local".equalsIgnoreCase(ENVIRONMENT);
   }

@@ -6,10 +6,11 @@ For local development, install
 - samlocal
 - sops
 - awslocal cli
+- playwright for frontend tests
 
 ## Deployments
 - sam instead of samlocal
-- aws cli instead of aws cli
+- aws cli instead of awslocal cli
 
 # Tech Stack
 - **Frontend:** React & Tailwind CSS

@@ -31,3 +31,6 @@ jobs:
 
       - name: Build
         run: just ${{ inputs.module-name }} build
+
+      - name: Unit Tests
+        run: just ${{ inputs.module-name }} test-unit

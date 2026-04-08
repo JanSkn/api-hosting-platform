@@ -149,4 +149,13 @@ public class DeploymentService {
     deploymentMetadata.delete(userId, deploymentId);
     userCode.deleteUserCode(userId, deploymentId);
   }
+
+  public void deleteDeployments(String userId) {
+    Optional<List<Deployment>> deploymentsOpt = getDeployments(userId);
+    if (deploymentsOpt.isPresent()) {
+      for (Deployment deployment : deploymentsOpt.get()) {
+        deleteDeployment(userId, deployment.getDeploymentId());
+      }
+    }
+  }
 }

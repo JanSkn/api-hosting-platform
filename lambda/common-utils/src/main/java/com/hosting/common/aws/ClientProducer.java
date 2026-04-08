@@ -4,6 +4,8 @@ import com.hosting.common.config.ProjectConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClientBuilder;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -84,6 +86,23 @@ public class ClientProducer {
   @ApplicationScoped
   public SqsClient sqsClient() {
     SqsClientBuilder builder = SqsClient.builder().region(ProjectConfig.AWS_REGION);
+
+    if (ProjectConfig.isLocal()) {
+      builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Produces an application-scoped CognitoIdentityProviderClient. It automatically configures the
+   * region and local endpoint overrides if running in a local environment.
+   */
+  @Produces
+  @ApplicationScoped
+  public CognitoIdentityProviderClient cognitoClient() {
+    CognitoIdentityProviderClientBuilder builder =
+        CognitoIdentityProviderClient.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
