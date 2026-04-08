@@ -45,3 +45,9 @@ web/public/config.js
 
 # custom files for quick ideas
 .ideas
+
+test-results
+playwright-report
+
+# for e2e tests
+!sample-api.zip

@@ -5,6 +5,7 @@ import {
   fetchAuthSession,
   fetchUserAttributes,
 } from "aws-amplify/auth";
+import { apiFetch } from "./apiClient";
 
 export interface User {
   id: string;
@@ -68,6 +69,6 @@ export async function updateProfile(_data: { name: string }): Promise<User> {
 }
 
 export async function deleteAccount(): Promise<void> {
-  // Not exposed by the current backend – sign out as a safe fallback.
+  await apiFetch("/users/me", { method: "DELETE" });
   await signOut();
 }

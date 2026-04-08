@@ -9,3 +9,12 @@ type-check:
 
 build:
     npm run build
+
+test-unit:
+    npm run test:unit
+
+test-e2e:
+    npm run test:e2e
+
+test-e2e-headed:
+    npm run test:e2e-headed
