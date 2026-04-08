@@ -34,8 +34,7 @@ public class ClientProducer {
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT).forcePathStyle(true);
     }
 
-    S3Client client = builder.build();
-    return client;
+    return builder.build();
   }
 
   /**
@@ -90,7 +89,6 @@ public class ClientProducer {
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
     }
 
-    SqsClient client = builder.build();
-    return client;
+    return builder.build();
   }
 }

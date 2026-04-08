@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useBuildLogs, useDeployment } from "@/hooks/useDeployments";
+import { useBuildLogs, useDeployment, useDeleteDeployment } from "@/hooks/useDeployments";
 import { statusConfig } from "@/components/ProjectCard";
 
 
@@ -13,6 +13,7 @@ const DeploymentDetails = () => {
   const navigate = useNavigate();
   const { data: deployment } = useDeployment(id ?? "");
   const { data: buildLogs = [] } = useBuildLogs(id ?? "");
+  const { mutate: deleteDeployment, isPending: isDeleting } = useDeleteDeployment();
   const [visibleLogs, setVisibleLogs] = useState<number>(0);
   const [isComplete, setIsComplete] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -38,9 +39,18 @@ const DeploymentDetails = () => {
   }, [visibleLogs]);
 
   const copyUrl = () => {
+    if (!functionUrl) return;
     navigator.clipboard.writeText(functionUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDelete = () => {
+    if (confirm("Are you sure you want to delete this deployment? This cannot be undone.")) {
+      deleteDeployment(id ?? "", {
+        onSuccess: () => navigate("/"),
+      });
+    }
   };
 
   return (
@@ -54,16 +64,27 @@ const DeploymentDetails = () => {
           Back to Dashboard
         </button>
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
-            {deployment?.name ?? "Deployment Details"}
-          </h1>
-          <div className="flex items-center gap-2">
-            <span className={cn("h-2.5 w-2.5 rounded-full", currentStatus?.dotClass || "bg-muted")} />
-            <span className={cn("text-sm font-medium", currentStatus?.textClass || "text-muted-foreground")}>
-              {currentStatus?.label || "Unknown"}
-            </span>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
+              {deployment?.name ?? "Deployment Details"}
+            </h1>
+            <div className="flex items-center gap-2">
+              <span className={cn("h-2.5 w-2.5 rounded-full", currentStatus?.dotClass || "bg-muted")} />
+              <span className={cn("text-sm font-medium", currentStatus?.textClass || "text-muted-foreground")}>
+                {currentStatus?.label || "Unknown"}
+              </span>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            className="text-muted-foreground hover:text-status-error hover:border-status-error/40 hover:bg-status-error/5"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Deployment
+          </Button>
         </div>
 
 

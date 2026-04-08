@@ -1,7 +1,14 @@
 import { useState } from "react";
-import { Copy, Check, ExternalLink } from "lucide-react";
+import { Copy, Check, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useDeleteDeployment } from "@/hooks/useDeployments";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FAILED" | "LIVE";
 
@@ -38,11 +45,20 @@ export function ProjectCard({ deployment }: { deployment: Deployment }) {
   };
 
 
+  const { mutate: deleteDeployment, isPending: isDeleting } = useDeleteDeployment();
+
   const copyUrl = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(deployment.apiUri);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this deployment?")) {
+      deleteDeployment(deployment.deploymentId);
+    }
   };
 
   return (
@@ -54,11 +70,33 @@ export function ProjectCard({ deployment }: { deployment: Deployment }) {
         <h3 className="font-medium text-card-foreground text-sm truncate pr-2">
           {deployment.name}
         </h3>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={cn("h-2 w-2 rounded-full", status.dotClass)} />
-          <span className={cn("text-xs font-medium", status.textClass)}>
-            {status.label}
-          </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 transition-all">
+            <span className={cn("h-2 w-2 rounded-full", status.dotClass)} />
+            <span className={cn("text-xs font-medium", status.textClass)}>
+              {status.label}
+            </span>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-all shrink-0"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-status-error focus:text-status-error focus:bg-status-error/10 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Deployment
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

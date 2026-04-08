@@ -20,9 +20,13 @@ public class Deployment {
   private String apiId;
   private String apiUri;
   private String errorMessage;
+  private String githubUrl; // if user uploads from GH instead of zip
   private long createdAt; // Epoch seconds
 
-  public Deployment() {}
+  @SuppressWarnings("PMD.UnnecessaryConstructor")
+  public Deployment() {
+    // default constructor required by DynamoDB Enhanced Client for mapping
+  }
 
   @DynamoDbPartitionKey
   public String getUserId() {
@@ -114,6 +118,14 @@ public class Deployment {
     this.createdAt = createdAt;
   }
 
+  public String getGithubUrl() {
+    return githubUrl;
+  }
+
+  public void setGithubUrl(String githubUrl) {
+    this.githubUrl = githubUrl;
+  }
+
   @Override
   public String toString() {
     return new StringJoiner(", ", Deployment.class.getSimpleName() + "[", "]")
@@ -127,6 +139,7 @@ public class Deployment {
         .add("apiId='" + apiId + "'")
         .add("apiUri='" + apiUri + "'")
         .add("errorMessage='" + errorMessage + "'")
+        .add("githubUrl='" + githubUrl + "'")
         .add("createdAt=" + createdAt)
         .toString();
   }

@@ -18,39 +18,54 @@ jobs:
         id: filter
         with:
           filters: |
+            global:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+              - 'lambda/pom.xml'
+              - 'justfile'
             frontend:
               - 'web/**'
-            build-orchestrator:
-              - 'lambda/build-orchestrator-lambda/**'
             common-utils:
               - 'lambda/common-utils/**'
             core-backend:
               - 'lambda/core-backend-lambda/**'
-
-  run-build-orchestrator-ci-checks:
-    needs: detect-code-changes
-    if: needs.detect-code-changes.outputs.build-orchestrator-changed == 'true'
-    uses: ./.github/workflows/backend-ci.yml
-    with:
-      module-name: build-orchestrator-lambda
+            build-orchestrator:
+              - 'lambda/build-orchestrator-lambda/**'
 
   run-common-utils-ci-checks:
     needs: detect-code-changes
-    if: needs.detect-code-changes.outputs.common-utils-changed == 'true'
+    if: |
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.global-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: common-utils
 
+  run-build-orchestrator-ci-checks:
+    needs: detect-code-changes
+    if: |
+      needs.detect-code-changes.outputs.build-orchestrator-changed == 'true' ||
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.global-changed == 'true'
+    uses: ./.github/workflows/backend-ci.yml
+    with:
+      module-name: build-orchestrator-lambda
+
   run-core-backend-ci-checks:
     needs: detect-code-changes
-    if: needs.detect-code-changes.outputs.core-backend-changed == 'true'
+    if: |
+      needs.detect-code-changes.outputs.core-backend-changed == 'true' ||
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.global-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: core-backend-lambda
 
   run-frontend-ci-checks:
     needs: detect-code-changes
-    if: needs.detect-code-changes.outputs.frontend-changed == 'true'
+    if: |
+      needs.detect-code-changes.outputs.frontend-changed == 'true' ||
+      needs.detect-code-changes.outputs.global-changed == 'true'
     uses: ./.github/workflows/frontend-ci.yml
     with:
       module-name: web

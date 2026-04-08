@@ -69,4 +69,8 @@ public abstract class AbstractDynamoRepository<T> {
   public void delete(T entity) {
     table.deleteItem(entity);
   }
+
+  public void delete(String partitionKey, String sortKey) {
+    table.deleteItem(r -> r.key(k -> k.partitionValue(partitionKey).sortValue(sortKey)));
+  }
 }

@@ -5,18 +5,13 @@ import com.hosting.common.exceptions.DeploymentLimitReachedException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import org.jboss.logging.Logger;
 
 @Provider
 public class DeploymentLimitReachedExceptionMapper
     implements ExceptionMapper<DeploymentLimitReachedException> {
 
-  private static final Logger LOG = Logger.getLogger(DeploymentLimitReachedExceptionMapper.class);
-
   @Override
   public Response toResponse(DeploymentLimitReachedException exception) {
-    LOG.error("Deployment Limit Reached: " + exception.getMessage(), exception);
-
     return Response.status(Response.Status.FORBIDDEN)
         .entity(
             new ErrorPayload(
@@ -27,5 +22,5 @@ public class DeploymentLimitReachedExceptionMapper
         .build();
   }
 
-  public static record ErrorPayload(String error, String message) {}
+  public record ErrorPayload(String error, String message) {}
 }

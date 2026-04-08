@@ -42,7 +42,7 @@ public class BuildQueueRepository {
 
       sqsClient.sendMessage(sendMsgRequest);
     } catch (Exception e) {
-      throw new SQSBuildJobNotEnqueuedException();
+      throw new SQSBuildJobNotEnqueuedException("Failed to enqueue build job in SQS", e);
     }
   }
 }
