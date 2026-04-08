@@ -7,6 +7,7 @@ import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
@@ -91,5 +92,15 @@ public class DeploymentResource extends BaseResource {
     deploymentService.triggerDeployment(userId, deploymentId);
 
     return createResponse(Response.Status.OK, "Deployment job enqueued");
+  }
+
+  @DELETE
+  @Path("/{deploymentId}")
+  public Response deleteDeployment(@PathParam("deploymentId") String deploymentId) {
+    String userId = claims.getUserId();
+
+    deploymentService.deleteDeployment(userId, deploymentId);
+
+    return createResponse(Response.Status.OK, "Deployment deleted");
   }
 }

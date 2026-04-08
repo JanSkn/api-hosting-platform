@@ -3,7 +3,12 @@ package com.hosting.common.config;
 import java.net.URI;
 import software.amazon.awssdk.regions.Region;
 
-public class ProjectConfig {
+public final class ProjectConfig {
+
+  private ProjectConfig() {
+    throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
+  }
+
   public static final String ENVIRONMENT = System.getenv("ENV");
   public static final Region AWS_REGION = Region.of(System.getenv("AWS_REGION"));
 

@@ -154,6 +154,7 @@ Resources:
       ContentBasedDeduplication: true
       # if SQS lambda crashes
       VisibilityTimeout: 90 # lambda timeout x 6 retries
+      MessageRetentionPeriod: 86400
 
   # BuildOrchestratorFunction:
   #   Type: AWS::Serverless::Function

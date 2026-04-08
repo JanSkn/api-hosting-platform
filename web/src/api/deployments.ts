@@ -12,6 +12,7 @@ export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FA
 export interface CreateDeploymentRequest {
   name: string;
   runtime: DeploymentRuntime;
+  githubUrl?: string;
 }
 
 export interface CreateDeploymentResponse {
@@ -62,7 +63,10 @@ export async function generateUploadUrl(deploymentId: string): Promise<UploadUrl
   return res.json();
 }
 
-/** Step 4: Trigger the build/deploy pipeline after uploading the zip */
 export async function triggerDeployment(deploymentId: string): Promise<void> {
   await apiFetch(`/deployments/${deploymentId}/trigger`, { method: "POST" });
+}
+
+export async function deleteDeployment(deploymentId: string): Promise<void> {
+  await apiFetch(`/deployments/${deploymentId}`, { method: "DELETE" });
 }

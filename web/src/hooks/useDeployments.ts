@@ -6,6 +6,7 @@ import {
   updateDeploymentStatus,
   generateUploadUrl,
   triggerDeployment,
+  deleteDeployment as apiDeleteDeployment,
   type DeploymentRuntime,
   type BuildLog,
 } from "@/api/deployments";
@@ -63,11 +64,20 @@ export function useCreateDeployment() {
       source: File | string;
       envVars: { key: string; value: string }[];
     }) => {
+      const isGithub = typeof data.source === "string" && data.source.includes("github.com");
+
       // 1. Initialize
       const { deploymentId } = await initializeDeployment({
         name: data.name,
         runtime: mapRuntime(data.runtime),
+        githubUrl: isGithub ? (data.source as string) : undefined,
       });
+
+      // If it's a GitHub URL, the backend will handle the download and upload during trigger
+      if (isGithub) {
+        await triggerDeployment(deploymentId);
+        return { id: deploymentId };
+      }
 
       // 2. Set status to UPLOADING
       await updateDeploymentStatus(deploymentId, "UPLOADING");
@@ -75,26 +85,11 @@ export function useCreateDeployment() {
       // 3. Get Upload URL
       const { uploadUrl } = await generateUploadUrl(deploymentId);
 
-      // TODO CORS issue when github
-      // 4. Perform S3 Upload (File or GitHub URL)
+      // 4. Perform S3 Upload (File only, GitHub handled above)
       let body: Blob | File | null = null;
 
       if (data.source instanceof File) {
         body = data.source;
-      } else if (typeof data.source === "string" && data.source.includes("github.com")) {
-        // Simple GitHub URL parsing: https://github.com/owner/repo
-        const match = data.source.match(/github\.com\/([^/]+)\/([^/]+)/);
-        if (match) {
-          const owner = match[1];
-          const repo = match[2].replace(/\.git$/, "").split("/")[0]; // handle trailing slashes or .git
-          const zipUrl = `https://api.github.com/repos/${owner}/${repo}/zipball`;
-
-          const zipResponse = await fetch(zipUrl);
-          if (!zipResponse.ok) {
-            throw new Error(`Failed to fetch ZIP from GitHub: ${zipResponse.statusText}`);
-          }
-          body = await zipResponse.blob();
-        }
       }
 
       if (body) {
@@ -131,8 +126,8 @@ export function useCreateDeployment() {
 export function useDeleteDeployment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (_id: string) => {
-      // DELETE endpoint not yet exposed by backend – no-op for now
+    mutationFn: async (id: string) => {
+      await apiDeleteDeployment(id);
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["deployments"] });

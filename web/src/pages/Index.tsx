@@ -44,7 +44,7 @@ const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {deployments.map((deployment) => (
-              <ProjectCard key={deployment.id} deployment={deployment} />
+              <ProjectCard key={deployment.deploymentId} deployment={deployment} />
             ))}
           </div>
         )}
