@@ -15,11 +15,13 @@ public class HealthResource {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response checkHealth() {
+    @SuppressWarnings("PMD.LooseCoupling")
     Map<String, Object> healthInfo = new LinkedHashMap<>();
 
     healthInfo.put("status", "UP");
     healthInfo.put("timestamp", Instant.now().toString());
 
+    @SuppressWarnings("PMD.LooseCoupling")
     Map<String, Object> systemInfo = new LinkedHashMap<>();
     systemInfo.put("javaVersion", System.getProperty("java.version"));
     systemInfo.put("osName", System.getProperty("os.name"));

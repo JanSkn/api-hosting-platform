@@ -9,8 +9,8 @@ on:
         type: string
 
 jobs:
-  static-code-analysis:
-    name: Static Code Analysis – ${{ inputs.module-name }}
+  ci-checks:
+    name: CI Checks – ${{ inputs.module-name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,42 +20,23 @@ jobs:
       - name: Local install of shared modules
         run: just lambda install
 
-      - name: Spotless Check
-        run: just ${{ inputs.module-name }} lint
+      - name: Static Code Analysis
+        run: |
+          just ${{ inputs.module-name }} lint
+          just ${{ inputs.module-name }} code-analysis
 
-      - name: Code Analysis (PMD & CPD)
-        run: just ${{ inputs.module-name }} code-analysis
-
-  build:
-    name: Build  – ${{ inputs.module-name }}
-    runs-on: ubuntu-latest
-    needs: static-code-analysis
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-java-maven
-      - uses: ./.github/actions/setup-just
+      - name: Run Unit Tests
+        run: just ${{ inputs.module-name }} unit-test
 
       - name: Create Build Artifact
-        run: just lambda install
+        run: just ${{ inputs.module-name }} build
 
-      - name: Upload Artifact
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: apiforge-${{ inputs.module-name }}-jar
           path: ${{ inputs.module-name }}/target/*.jar
           retention-days: 1
-
-  test:
-    name: Unit Tests  – ${{ inputs.module-name }}
-    runs-on: ubuntu-latest
-    needs: static-code-analysis
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-java-maven
-      - uses: ./.github/actions/setup-just
-
-      - name: Run Unit Tests
-        run: just ${{ inputs.module-name }} unit-test
 
       - name: Upload Test Results
         if: always()
@@ -64,7 +45,7 @@ jobs:
           name: test-results-${{ inputs.module-name }}
           path: ${{ inputs.module-name }}/target/surefire-reports/
 
-      - name: Upload Coverage Ceport
+      - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ inputs.module-name }}

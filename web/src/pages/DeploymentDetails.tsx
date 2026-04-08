@@ -1,22 +1,26 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useBuildLogs, useDeployment } from "@/hooks/useDeployments";
+import { useBuildLogs, useDeployment, useDeleteDeployment } from "@/hooks/useDeployments";
+import { statusConfig } from "@/components/ProjectCard";
+
 
 const DeploymentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: deployment } = useDeployment(id ?? "");
   const { data: buildLogs = [] } = useBuildLogs(id ?? "");
+  const { mutate: deleteDeployment, isPending: isDeleting } = useDeleteDeployment();
   const [visibleLogs, setVisibleLogs] = useState<number>(0);
   const [isComplete, setIsComplete] = useState(false);
   const [copied, setCopied] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const functionUrl = deployment?.url ?? "https://a1b2c3.lambda-url.us-east-1.on.aws";
+  const functionUrl = deployment?.apiUri;
+  const currentStatus = deployment?.status ? statusConfig[deployment.status] : null;
 
   useEffect(() => {
     if (buildLogs.length === 0) return;
@@ -35,9 +39,18 @@ const DeploymentDetails = () => {
   }, [visibleLogs]);
 
   const copyUrl = () => {
+    if (!functionUrl) return;
     navigator.clipboard.writeText(functionUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDelete = () => {
+    if (confirm("Are you sure you want to delete this deployment? This cannot be undone.")) {
+      deleteDeployment(id ?? "", {
+        onSuccess: () => navigate("/"),
+      });
+    }
   };
 
   return (
@@ -51,17 +64,29 @@ const DeploymentDetails = () => {
           Back to Dashboard
         </button>
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
-            {deployment?.name ?? "Deployment Details"}
-          </h1>
-          <div className="flex items-center gap-2">
-            <span className={cn("h-2.5 w-2.5 rounded-full", isComplete ? "bg-status-live" : "bg-status-building animate-pulse-dot")} />
-            <span className={cn("text-sm font-medium", isComplete ? "text-status-live" : "text-status-building")}>
-              {isComplete ? "Live" : "Building..."}
-            </span>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
+              {deployment?.name ?? "Deployment Details"}
+            </h1>
+            <div className="flex items-center gap-2">
+              <span className={cn("h-2.5 w-2.5 rounded-full", currentStatus?.dotClass || "bg-muted")} />
+              <span className={cn("text-sm font-medium", currentStatus?.textClass || "text-muted-foreground")}>
+                {currentStatus?.label || "Unknown"}
+              </span>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            className="text-muted-foreground hover:text-status-error hover:border-status-error/40 hover:bg-status-error/5"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Deployment
+          </Button>
         </div>
+
 
         <div className="rounded-lg overflow-hidden border border-border mb-6">
           <div className="bg-terminal-bg px-4 py-2 flex items-center gap-1.5 border-b border-white/5">
@@ -84,7 +109,7 @@ const DeploymentDetails = () => {
           </div>
         </div>
 
-        {isComplete && (
+        {deployment?.status === "LIVE" && functionUrl && (
           <div className="bg-card border border-status-live/20 rounded-lg p-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-status-live/10 mb-4">
               <Check className="h-6 w-6 text-status-live" />

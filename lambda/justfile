@@ -1,2 +1,4 @@
+mvn_flags := "-B --no-transfer-progress"
+
 install:
-    ./mvnw clean install -DskipTests
+    ./mvnw {{ mvn_flags }} clean install -DskipTests

@@ -30,14 +30,16 @@ const Settings = () => {
         <div className="space-y-8">
           <section className="space-y-4">
             <h2 className="text-lg font-medium text-foreground">Profile</h2>
+            <div className="space-y-1.5">
+              <Label>Username</Label>
+              <p className="text-sm font-medium text-foreground">
+                {user?.name ?? "—"}
+              </p>
+            </div>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label>Display Name</Label>
-                <p className="text-sm text-foreground">{user?.name ?? "John Doe"}</p>
-              </div>
-              <div className="space-y-1.5">
                 <Label>Email</Label>
-                <p className="text-sm text-foreground">{user?.email ?? "john@example.com"}</p>
+                <p className="text-sm text-foreground">{user?.email ?? "—"}</p>
               </div>
             </div>
           </section>

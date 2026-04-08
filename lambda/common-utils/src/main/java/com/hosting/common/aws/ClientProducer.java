@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
@@ -30,15 +31,14 @@ public class ClientProducer {
     S3ClientBuilder builder = S3Client.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
-      builder.endpointOverride(ProjectConfig.AWS_LOCAL_ENDPOINT).forcePathStyle(true);
+      builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT).forcePathStyle(true);
     }
 
-    S3Client client = builder.build();
-    return client;
+    return builder.build();
   }
 
   /**
-   * Produces an application-scoped S3Presigner.It automatically configures the region and local
+   * Produces an application-scoped S3Presigner. It automatically configures the region and local
    * endpoint overrides if running in a local environment. Required for generating pre-signed URLs
    * for secure browser uploads.
    */
@@ -48,7 +48,12 @@ public class ClientProducer {
     S3Presigner.Builder builder = S3Presigner.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
-      builder.endpointOverride(ProjectConfig.AWS_LOCAL_ENDPOINT);
+      S3Configuration s3Configuration =
+          S3Configuration.builder().pathStyleAccessEnabled(true).build();
+
+      builder
+          .endpointOverride(ProjectConfig.AWS_LOCAL_EXTERNAL_ENDPOINT)
+          .serviceConfiguration(s3Configuration);
     }
 
     return builder.build();
@@ -64,7 +69,7 @@ public class ClientProducer {
     DynamoDbClientBuilder builder = DynamoDbClient.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
-      builder.endpointOverride(ProjectConfig.AWS_LOCAL_ENDPOINT);
+      builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
     }
 
     DynamoDbClient standardClient = builder.build();
@@ -81,10 +86,9 @@ public class ClientProducer {
     SqsClientBuilder builder = SqsClient.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
-      builder.endpointOverride(ProjectConfig.AWS_LOCAL_ENDPOINT);
+      builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
     }
 
-    SqsClient client = builder.build();
-    return client;
+    return builder.build();
   }
 }

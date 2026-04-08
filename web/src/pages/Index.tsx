@@ -33,10 +33,18 @@ const Dashboard = () => {
               <div key={i} className="h-32 bg-card border border-border rounded-lg animate-pulse" />
             ))}
           </div>
+        ) : deployments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-xl border-muted">
+            <p className="text-muted-foreground mb-4">No deployments yet</p>
+            <Button variant="outline" onClick={() => navigate("/new")} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create your first deployment
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {deployments.map((deployment) => (
-              <ProjectCard key={deployment.id} deployment={deployment} />
+              <ProjectCard key={deployment.deploymentId} deployment={deployment} />
             ))}
           </div>
         )}

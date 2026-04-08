@@ -4,4 +4,8 @@ public class SQSBuildJobNotEnqueuedException extends RuntimeException {
   public SQSBuildJobNotEnqueuedException() {
     super("Failed to enqueue build job in SQS");
   }
+
+  public SQSBuildJobNotEnqueuedException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

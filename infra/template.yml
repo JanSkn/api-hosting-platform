@@ -24,7 +24,7 @@ Parameters:
     Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
-    Default: "code-uploads/"
+    Default: "code-uploads"
 
 Conditions:
   isNotLocal: !Not [ !Equals [ !Ref Environment, local ] ]
@@ -47,7 +47,7 @@ Resources:
       StageName: !Ref Environment
       # as we set the gateway as proxy, it does not add any CORS headers, so we set them in Quarkus (application.properties) and let API Gateway forward them
       Cors:
-        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
         AllowHeaders: "'Accept,Authorization,Content-Type,X-Requested-With'"
         AllowOrigin: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'" ]
       Auth:
@@ -135,6 +135,16 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+            AllowedOrigins:
+              - !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
+            MaxAge: 3000
 
   BuildJobQueue:
     Type: AWS::SQS::Queue
@@ -144,6 +154,7 @@ Resources:
       ContentBasedDeduplication: true
       # if SQS lambda crashes
       VisibilityTimeout: 90 # lambda timeout x 6 retries
+      MessageRetentionPeriod: 86400
 
   # BuildOrchestratorFunction:
   #   Type: AWS::Serverless::Function

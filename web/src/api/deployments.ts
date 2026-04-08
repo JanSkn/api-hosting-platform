@@ -1,47 +1,72 @@
-import { USE_MOCK_DATA, API_BASE_URL } from "./config";
-import { mockApi } from "./mock-data";
+import { apiFetch } from "./apiClient";
 import type { Deployment } from "@/components/ProjectCard";
-import type { BuildLog } from "./mock-data";
+
+export interface BuildLog {
+  time: string;
+  msg: string;
+}
+
+export type DeploymentRuntime = "JAVA_17" | "NODEJS_18_X" | "PYTHON_3_12";
+export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FAILED" | "LIVE";
+
+export interface CreateDeploymentRequest {
+  name: string;
+  runtime: DeploymentRuntime;
+  githubUrl?: string;
+}
+
+export interface CreateDeploymentResponse {
+  deploymentId: string;
+}
+
+export interface UploadUrlResponse {
+  uploadUrl: string;
+  expiresInSeconds: number;
+}
 
 export async function fetchDeployments(): Promise<Deployment[]> {
-  if (USE_MOCK_DATA) return mockApi.getDeployments();
-  const res = await fetch(`${API_BASE_URL}/deployments`);
-  if (!res.ok) throw new Error("Failed to fetch deployments");
+  const res = await apiFetch("/deployments");
   return res.json();
 }
 
 export async function fetchDeployment(id: string): Promise<Deployment | undefined> {
-  if (USE_MOCK_DATA) return mockApi.getDeployment(id);
-  const res = await fetch(`${API_BASE_URL}/deployments/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch deployment");
+  const res = await apiFetch(`/deployments/${id}`);
   return res.json();
 }
 
-export async function createDeployment(data: {
-  name: string;
-  runtime: "node" | "python";
-  source: string;
-  envVars: { key: string; value: string }[];
-}): Promise<Deployment> {
-  if (USE_MOCK_DATA) return mockApi.createDeployment(data);
-  const res = await fetch(`${API_BASE_URL}/deployments`, {
+/** Step 1: Initialize a new deployment */
+export async function initializeDeployment(
+  request: CreateDeploymentRequest
+): Promise<CreateDeploymentResponse> {
+  const res = await apiFetch("/deployments/initialize", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(request),
   });
-  if (!res.ok) throw new Error("Failed to create deployment");
   return res.json();
 }
 
-export async function deleteDeployment(id: string): Promise<void> {
-  if (USE_MOCK_DATA) return mockApi.deleteDeployment(id);
-  const res = await fetch(`${API_BASE_URL}/deployments/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete deployment");
+/** Step 2: Update deployment status (e.g. to UPLOADING before S3 upload) */
+export async function updateDeploymentStatus(
+  deploymentId: string,
+  status: DeploymentStatus
+): Promise<void> {
+  await apiFetch(`/deployments/${deploymentId}/status?status=${status}`, {
+    method: "PATCH",
+  });
 }
 
-export async function fetchBuildLogs(id: string): Promise<BuildLog[]> {
-  if (USE_MOCK_DATA) return mockApi.getBuildLogs(id);
-  const res = await fetch(`${API_BASE_URL}/deployments/${id}/logs`);
-  if (!res.ok) throw new Error("Failed to fetch build logs");
+/** Step 3: Get a pre-signed S3 upload URL for a specific deployment */
+export async function generateUploadUrl(deploymentId: string): Promise<UploadUrlResponse> {
+  const res = await apiFetch(`/deployments/upload-url?deploymentId=${deploymentId}`, {
+    method: "GET",
+  });
   return res.json();
+}
+
+export async function triggerDeployment(deploymentId: string): Promise<void> {
+  await apiFetch(`/deployments/${deploymentId}/trigger`, { method: "POST" });
+}
+
+export async function deleteDeployment(deploymentId: string): Promise<void> {
+  await apiFetch(`/deployments/${deploymentId}`, { method: "DELETE" });
 }
