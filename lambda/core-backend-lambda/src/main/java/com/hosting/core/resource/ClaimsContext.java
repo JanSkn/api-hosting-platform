@@ -24,4 +24,10 @@ public class ClaimsContext {
     CognitoAuthorizerClaims claims = getClaims();
     return claims != null ? claims.getUsername() : null;
   }
+
+  public String getRequestId() {
+    return request != null && request.getRequestContext() != null
+        ? request.getRequestContext().getRequestId()
+        : null;
+  }
 }

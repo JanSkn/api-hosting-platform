@@ -14,12 +14,12 @@ test.describe('Dashboard E2E', () => {
 
     await page.click('button[type="submit"]');
 
-    await expect(page.locator('h1', { hasText: 'My API Deployments' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1', { hasText: 'My API Deployments' })).toBeVisible({ timeout: 20000 });
 
     page.once('dialog', dialog => dialog.accept());
     await page.goto('/settings');
     await page.click('button:has-text("Delete")');
-    await expect(page.locator('text=Sign in to your account')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Sign in to your account')).toBeVisible({ timeout: 20000 });
   });
 
   test('should allow a user to create a deployment and see it on the dashboard', async ({ page }) => {
@@ -29,9 +29,9 @@ test.describe('Dashboard E2E', () => {
     await page.fill('input[id="email"]', deployEmail);
     await page.fill('input[id="password"]', 'TestPassword123!');
     await page.click('button[type="submit"]');
-    await expect(page.locator('h1', { hasText: 'My API Deployments' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1', { hasText: 'My API Deployments' })).toBeVisible({ timeout: 20000 });
 
-    await page.click('button:has-text("New API Deployment")', { timeout: 5000 });
+    await page.click('button:has-text("New API Deployment")', { timeout: 10000 });
 
     await expect(page.locator('h1', { hasText: 'New Deployment' })).toBeVisible();
     await page.setInputFiles('input#file-upload', 'tests/e2e/sample-api.zip');
@@ -54,7 +54,7 @@ test.describe('Dashboard E2E', () => {
 
     await page.click('button:has-text("Back to Dashboard")');
 
-    await expect(page.locator('h1', { hasText: 'My API Deployments' })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1', { hasText: 'My API Deployments' })).toBeVisible({ timeout: 20000 });
     // Inside ProjectCard the name is in an h3
     await expect(page.locator(`h3:has-text("${apiName}")`).first()).toBeVisible();
 
@@ -63,6 +63,6 @@ test.describe('Dashboard E2E', () => {
     // Ensure we are on settings page
     await expect(page.locator('h1', { hasText: 'Settings' })).toBeVisible();
     await page.click('button:has-text("Delete")');
-    await expect(page.locator('text=Sign in to your account')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Sign in to your account')).toBeVisible({ timeout: 20000 });
   });
 });

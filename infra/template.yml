@@ -72,7 +72,7 @@ Resources:
         HealthEvent:
           Type: Api
           Properties:
-            Path: /api/v1/health
+            Path: /api/v1/health # renaming this endpoint requires renaming in core backend health resource
             Method: GET
             RestApiId: !Ref APIGateway
             Auth:
@@ -87,6 +87,7 @@ Resources:
         Variables:
           ENV: !Ref Environment
           AWS_REGION: !Ref AwsRegion # that deployment region and lambda region are the same
+          LOG_LEVEL: "INFO"
           # for CORS header in lambda responses, set by Quarkus in application.properties
           ALLOWED_ORIGIN: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
           COGNITO_USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
@@ -110,6 +111,7 @@ Resources:
     Properties:
       TableName: !Ref DeploymentsMetadataTableName
       BillingMode: PAY_PER_REQUEST 
+      # renaming of userId or deploymentId requires renaming in core backend lambda data model
       AttributeDefinitions:
         - AttributeName: userId
           AttributeType: S
@@ -168,7 +170,12 @@ Resources:
   #         Properties:
   #           Queue: !GetAtt BuildJobQueue.Arn
   #           BatchSize: 1 # one deployment per instance
-
+  #     Environment:
+  #       Variables:
+  #         ENV: !Ref Environment
+  #         AWS_REGION: !Ref AwsRegion
+  #         LOG_LEVEL: !If [ isNotLocal, "INFO", "DEBUG" ]
+          
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -187,7 +194,6 @@ Resources:
               # write logs
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "*"
@@ -219,7 +225,6 @@ Resources:
   CodeBuild:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub "user-image-builds-${Environment}"
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
         Type: NO_ARTIFACTS
@@ -235,7 +240,10 @@ Resources:
       Source:
         Type: S3
         Location: !Sub "${UserCodeBucket}/${UserCodeBucketPrefix}"
-      # LogConfig: # TODO, needed for frontend logs
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CoreBackendLogGroup
 
   EcrRepository:
     Type: AWS::ECR::Repository
@@ -274,7 +282,25 @@ Resources:
             ]
           }
 
-  # TODO cloudwatch with retention period to keep logs small
+  CoreBackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      # name must be same as Lambda function name to control default log created by lambda
+      LogGroupName: !Sub "/aws/lambda/${CoreBackendFunction}" 
+      RetentionInDays: 7
+
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/codebuild/${CodeBuild}" 
+      RetentionInDays: 7
+
+  # BuildOrchestratorFunctionLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     # name must be same as Lambda function name to control default log created by lambda
+  #     LogGroupName: !Sub "/aws/lambda/${BuildOrchestratorFunction}" 
+  #     RetentionInDays: 7
 
 # changing the output names requires renaming in connect-frontend.sh
 Outputs:

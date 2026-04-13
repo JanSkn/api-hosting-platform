@@ -74,7 +74,7 @@ Resources:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
       OriginAccessControlConfig:
-        # Name must be unique within account
+        # name can't get auto-generated, so set custom one
         Name: !Sub
           - amzn-secure-static-site-${guid}
           - guid: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
@@ -86,6 +86,7 @@ Resources:
     Type: AWS::CloudFront::ResponseHeadersPolicy
     Properties:
       ResponseHeadersPolicyConfig:
+        # name can't get auto-generated, so set custom one
         Name: !Sub '${AWS::StackName}-static-site-security-headers'
         SecurityHeadersConfig:
           StrictTransportSecurity:

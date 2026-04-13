@@ -1,6 +1,7 @@
 package com.hosting.common.aws;
 
 import com.hosting.common.config.ProjectConfig;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
@@ -33,9 +34,11 @@ public class ClientProducer {
     S3ClientBuilder builder = S3Client.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
+      Log.debug("Configuring S3Client with local endpoint override");
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT).forcePathStyle(true);
     }
 
+    Log.debug("Producing S3Client bean");
     return builder.build();
   }
 
@@ -50,6 +53,7 @@ public class ClientProducer {
     S3Presigner.Builder builder = S3Presigner.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
+      Log.debug("Configuring S3Presigner with local endpoint override");
       S3Configuration s3Configuration =
           S3Configuration.builder().pathStyleAccessEnabled(true).build();
 
@@ -58,6 +62,7 @@ public class ClientProducer {
           .serviceConfiguration(s3Configuration);
     }
 
+    Log.debug("Producing S3Presigner bean");
     return builder.build();
   }
 
@@ -71,10 +76,12 @@ public class ClientProducer {
     DynamoDbClientBuilder builder = DynamoDbClient.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
+      Log.debug("Configuring DynamoDbClient with local endpoint override");
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
     }
 
     DynamoDbClient standardClient = builder.build();
+    Log.debug("Producing DynamoDbEnhancedClient bean");
     return DynamoDbEnhancedClient.builder().dynamoDbClient(standardClient).build();
   }
 
@@ -88,9 +95,11 @@ public class ClientProducer {
     SqsClientBuilder builder = SqsClient.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
+      Log.debug("Configuring SqsClient with local endpoint override");
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
     }
 
+    Log.debug("Producing SqsClient bean");
     return builder.build();
   }
 
@@ -105,9 +114,11 @@ public class ClientProducer {
         CognitoIdentityProviderClient.builder().region(ProjectConfig.AWS_REGION);
 
     if (ProjectConfig.isLocal()) {
+      Log.debug("Configuring CognitoIdentityProviderClient with local endpoint override");
       builder.endpointOverride(ProjectConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
     }
 
+    Log.debug("Producing CognitoIdentityProviderClient bean");
     return builder.build();
   }
 }

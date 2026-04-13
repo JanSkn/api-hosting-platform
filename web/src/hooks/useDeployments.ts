@@ -10,6 +10,7 @@ import {
   type DeploymentRuntime,
   type BuildLog,
 } from "@/api/deployments";
+import { clearCorrelationId } from "@/api/correlationId";
 
 export function useDeployments() {
   return useQuery({
@@ -64,52 +65,59 @@ export function useCreateDeployment() {
       source: File | string;
       envVars: { key: string; value: string }[];
     }) => {
-      const isGithub = typeof data.source === "string" && data.source.includes("github.com");
+      // Start fresh correlation ID for each deployment flow
+      clearCorrelationId();
+      try {
+        const isGithub = typeof data.source === "string" && data.source.includes("github.com");
 
-      // 1. Initialize
-      const { deploymentId } = await initializeDeployment({
-        name: data.name,
-        runtime: mapRuntime(data.runtime),
-        githubUrl: isGithub ? (data.source as string) : undefined,
-      });
-
-      // If it's a GitHub URL, the backend will handle the download and upload during trigger
-      if (isGithub) {
-        await triggerDeployment(deploymentId);
-        return { id: deploymentId };
-      }
-
-      // 2. Set status to UPLOADING
-      await updateDeploymentStatus(deploymentId, "UPLOADING");
-
-      // 3. Get Upload URL
-      const { uploadUrl } = await generateUploadUrl(deploymentId);
-
-      // 4. Perform S3 Upload (File only, GitHub handled above)
-      let body: Blob | File | null = null;
-
-      if (data.source instanceof File) {
-        body = data.source;
-      }
-
-      if (body) {
-        const response = await fetch(uploadUrl, {
-          method: "PUT",
-          body: body,
-          headers: {
-            "Content-Type": "application/zip",
-          },
+        // 1. Initialize
+        const { deploymentId } = await initializeDeployment({
+          name: data.name,
+          runtime: mapRuntime(data.runtime),
+          githubUrl: isGithub ? (data.source as string) : undefined,
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to upload source code to S3");
+        // If it's a GitHub URL, the backend will handle the download and upload during trigger
+        if (isGithub) {
+          await triggerDeployment(deploymentId);
+          return { id: deploymentId };
         }
+
+        // 2. Set status to UPLOADING
+        await updateDeploymentStatus(deploymentId, "UPLOADING");
+
+        // 3. Get Upload URL
+        const { uploadUrl } = await generateUploadUrl(deploymentId);
+
+        // 4. Perform S3 Upload (File only, GitHub handled above)
+        let body: Blob | File | null = null;
+
+        if (data.source instanceof File) {
+          body = data.source;
+        }
+
+        if (body) {
+          const response = await fetch(uploadUrl, {
+            method: "PUT",
+            body: body,
+            headers: {
+              "Content-Type": "application/zip",
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to upload source code to S3");
+          }
+        }
+
+        // 5. Trigger
+        await triggerDeployment(deploymentId);
+
+        return { id: deploymentId };
+      } finally {
+        // Successfully triggered or failed, clear correlation ID for next transaction
+        clearCorrelationId();
       }
-
-      // 5. Trigger
-      await triggerDeployment(deploymentId);
-
-      return { id: deploymentId };
     },
     onSuccess: (data) => {
       // Invalidate the full list
