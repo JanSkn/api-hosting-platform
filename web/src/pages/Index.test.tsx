@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import Index from "./Index";
 import * as useDeploymentsHook from "@/hooks/useDeployments";
+import type { Deployment } from "@/components/ProjectCard";
 
 // Mock the hook and components
 vi.mock("@/hooks/useDeployments", () => ({
@@ -10,11 +11,11 @@ vi.mock("@/hooks/useDeployments", () => ({
 }));
 
 vi.mock("@/components/DashboardLayout", () => ({
-  DashboardLayout: ({ children }: any) => <div data-testid="dashboard-layout">{children}</div>,
+  DashboardLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="dashboard-layout">{children}</div>,
 }));
 
 vi.mock("@/components/ProjectCard", () => ({
-  ProjectCard: ({ deployment }: any) => <div data-testid="project-card">{deployment.name}</div>,
+  ProjectCard: ({ deployment }: { deployment: Deployment }) => <div data-testid="project-card">{deployment.name}</div>,
 }));
 
 describe("Index (Dashboard) page", () => {
@@ -23,10 +24,10 @@ describe("Index (Dashboard) page", () => {
   });
 
   it("should render loading state", () => {
-    (useDeploymentsHook.useDeployments as any).mockReturnValue({
+    vi.mocked(useDeploymentsHook.useDeployments).mockReturnValue({
       data: undefined,
       isLoading: true,
-    });
+    } as unknown as ReturnType<typeof useDeploymentsHook.useDeployments>);
 
     render(
       <BrowserRouter>
@@ -41,10 +42,10 @@ describe("Index (Dashboard) page", () => {
   });
 
   it("should render empty state when no deployments exist", () => {
-    (useDeploymentsHook.useDeployments as any).mockReturnValue({
+    vi.mocked(useDeploymentsHook.useDeployments).mockReturnValue({
       data: [],
       isLoading: false,
-    });
+    } as unknown as ReturnType<typeof useDeploymentsHook.useDeployments>);
 
     render(
       <BrowserRouter>
@@ -60,12 +61,12 @@ describe("Index (Dashboard) page", () => {
     const mockDeployments = [
       { deploymentId: "1", name: "Alpha API" },
       { deploymentId: "2", name: "Beta API" },
-    ];
+    ] as Deployment[];
 
-    (useDeploymentsHook.useDeployments as any).mockReturnValue({
+    vi.mocked(useDeploymentsHook.useDeployments).mockReturnValue({
       data: mockDeployments,
       isLoading: false,
-    });
+    } as unknown as ReturnType<typeof useDeploymentsHook.useDeployments>);
 
     render(
       <BrowserRouter>

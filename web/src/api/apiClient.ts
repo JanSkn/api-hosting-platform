@@ -1,5 +1,6 @@
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getApiBaseUrl } from "@/config";
+import { getCorrelationId, setCorrelationId } from "./correlationId";
 
 /**
  * Authenticated fetch wrapper.
@@ -20,6 +21,11 @@ export async function apiFetch(
     ...(init.headers as Record<string, string>),
   };
 
+  const correlationId = getCorrelationId();
+  if (correlationId) {
+    headers["X-Correlation-ID"] = correlationId;
+  }
+
   if (token) {
     headers["Authorization"] = token;
   }
@@ -28,6 +34,12 @@ export async function apiFetch(
     ...init,
     headers,
   });
+
+  // Capture correlation ID from response header if present
+  const respCorrelationId = res.headers.get("X-Correlation-ID");
+  if (respCorrelationId) {
+    setCorrelationId(respCorrelationId);
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");

@@ -1,6 +1,7 @@
 package com.hosting.common.aws;
 
 import com.hosting.common.config.ProjectConfig;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
@@ -22,5 +23,6 @@ public class UserService {
             .build();
 
     cognitoClient.adminDeleteUser(deleteRequest);
+    Log.info("Successfully deleted user from Cognito");
   }
 }

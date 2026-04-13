@@ -48,12 +48,8 @@ window.APP_CONFIG = {
 EOF
 
 if [[ "$ENVIRONMENT" == "local" ]]; then
-  if [[ ! -f "$LOCAL_CONFIG_JS_FILE" ]]; then
-    echo "✅ Writing config.js locally to $LOCAL_CONFIG_JS_FILE"
-    cp "$TEMP_CONFIG" "$LOCAL_CONFIG_JS_FILE"
-  else
-    echo "✅ $LOCAL_CONFIG_JS_FILE already exists locally, skipping write"
-  fi
+  echo "✅ Writing config.js locally to $LOCAL_CONFIG_JS_FILE"
+  cp "$TEMP_CONFIG" "$LOCAL_CONFIG_JS_FILE"
 else
   if ! aws s3 ls "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION" >/dev/null 2>&1; then
     echo "Uploading to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."

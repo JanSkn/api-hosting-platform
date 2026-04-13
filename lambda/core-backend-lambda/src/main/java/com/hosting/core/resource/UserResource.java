@@ -1,6 +1,7 @@
 package com.hosting.core.resource;
 
 import com.hosting.common.aws.UserService;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
@@ -17,9 +18,8 @@ public class UserResource extends BaseResource {
   @DELETE
   @Path("/me")
   public Response deleteUser() {
-    String userId = claims.getUserId();
-
-    userService.deleteUser(userId);
+    Log.info("Initializing user deletion");
+    userService.deleteUser(claims.getUserId());
 
     return createResponse(Response.Status.OK, "User deleted");
   }

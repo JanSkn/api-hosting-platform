@@ -5,6 +5,8 @@ import com.hosting.common.dto.CreateDeploymentRequest;
 import com.hosting.common.dto.CreateDeploymentResponse;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
+import com.hosting.common.logging.LoggingConstants;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
@@ -15,6 +17,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
+import org.slf4j.MDC;
 
 @Path("deployments")
 @RequestScoped // token context per request
@@ -50,14 +53,16 @@ public class DeploymentResource extends BaseResource {
   - Client calls PATCH /{deploymentId}/status to update deployment status to UPLOADING
   - Client uploads code to S3 using the presigned URL
   - Client calls POST /{deploymentId}/trigger to trigger the deployment
+
+  These deployments steps get connected in the logs using the correlationId from the X-Correlation-ID header set in MDCLogFilter
   */
 
   @POST
   @Path("/initialize")
   public Response initializeDeployment(CreateDeploymentRequest request) {
-    String userId = claims.getUserId();
+    Log.info("Initializing new deployment");
 
-    String deploymentId = deploymentService.initializeDeployment(userId, request);
+    String deploymentId = deploymentService.initializeDeployment(claims.getUserId(), request);
     CreateDeploymentResponse response = new CreateDeploymentResponse(deploymentId);
 
     return createResponse(Response.Status.OK, response);
@@ -66,9 +71,11 @@ public class DeploymentResource extends BaseResource {
   @GET
   @Path("/upload-url")
   public Response generateS3CodeUploadUrl(@QueryParam("deploymentId") String deploymentId) {
-    String userId = claims.getUserId();
+    MDC.put(LoggingConstants.DEPLOYMENT_ID_MDC_KEY, deploymentId);
+    Log.info("Generating S3 upload URL");
 
-    UploadUrlResponse response = deploymentService.generateUploadUrl(userId, deploymentId);
+    UploadUrlResponse response =
+        deploymentService.generateUploadUrl(claims.getUserId(), deploymentId);
 
     return createResponse(Response.Status.OK, response);
   }
@@ -77,9 +84,10 @@ public class DeploymentResource extends BaseResource {
   @Path("/{deploymentId}/status")
   public Response setDeploymentStatus(
       @PathParam("deploymentId") String deploymentId, @QueryParam("status") Status status) {
-    String userId = claims.getUserId();
+    MDC.put(LoggingConstants.DEPLOYMENT_ID_MDC_KEY, deploymentId);
+    Log.infof("Updating status to %s", status);
 
-    deploymentService.setDeploymentStatus(userId, deploymentId, status);
+    deploymentService.setDeploymentStatus(claims.getUserId(), deploymentId, status);
 
     return createResponse(Response.Status.OK, "Deployment status updated");
   }
@@ -87,9 +95,10 @@ public class DeploymentResource extends BaseResource {
   @POST
   @Path("/{deploymentId}/trigger")
   public Response triggerDeployment(@PathParam("deploymentId") String deploymentId) {
-    String userId = claims.getUserId();
+    MDC.put(LoggingConstants.DEPLOYMENT_ID_MDC_KEY, deploymentId);
+    Log.info("Triggering build");
 
-    deploymentService.triggerDeployment(userId, deploymentId);
+    deploymentService.triggerDeployment(claims.getUserId(), deploymentId);
 
     return createResponse(Response.Status.OK, "Deployment job enqueued");
   }
@@ -97,9 +106,10 @@ public class DeploymentResource extends BaseResource {
   @DELETE
   @Path("/{deploymentId}")
   public Response deleteDeployment(@PathParam("deploymentId") String deploymentId) {
-    String userId = claims.getUserId();
+    MDC.put(LoggingConstants.DEPLOYMENT_ID_MDC_KEY, deploymentId);
+    Log.info("Deleting deployment");
 
-    deploymentService.deleteDeployment(userId, deploymentId);
+    deploymentService.deleteDeployment(claims.getUserId(), deploymentId);
 
     return createResponse(Response.Status.OK, "Deployment deleted");
   }
