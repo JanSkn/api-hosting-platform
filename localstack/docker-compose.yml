@@ -11,7 +11,7 @@ services:
       - DEBUG=${DEBUG:-0}
       - PERSISTENCE=${PERSISTENCE:-0}
       - DISABLE_CORS_CHECKS=1
-      - LAMBDA_KEEPALIVE_MS=300000
+      - LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT=60 # sqs dispatcher lambda needs time to start up
       - LOCALSTACK_AUTH_TOKEN # set via sops exec-env
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"

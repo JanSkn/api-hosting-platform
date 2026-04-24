@@ -18,7 +18,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
 
@@ -44,7 +43,6 @@ public class ClientProducer {
     }
 
     return builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
   }
 
@@ -84,7 +82,6 @@ public class ClientProducer {
     }
 
     DynamoDbClient standardClient = builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
     return DynamoDbEnhancedClient.builder().dynamoDbClient(standardClient).build();
   }
@@ -103,7 +100,6 @@ public class ClientProducer {
     }
 
     return builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
   }
 
@@ -119,7 +115,6 @@ public class ClientProducer {
     }
 
     return builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
   }
 
@@ -135,7 +130,6 @@ public class ClientProducer {
     }
 
     return builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
   }
 
@@ -154,7 +148,6 @@ public class ClientProducer {
     }
 
     return builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
   }
 
@@ -170,7 +163,6 @@ public class ClientProducer {
     }
 
     return builder
-        .httpClientBuilder(UrlConnectionHttpClient.builder())
         .build();
   }
 }

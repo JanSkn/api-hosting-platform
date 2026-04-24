@@ -40,10 +40,10 @@ test.describe('Dashboard E2E', () => {
     await page.fill('input[id="api-name"]', apiName);
 
     await page.getByRole('combobox').filter({ hasText: 'Select language' }).click();
-    await page.getByRole('option', { name: 'JavaScript' }).click();
+    await page.getByRole('option', { name: 'Python' }).click();
 
     await page.getByRole('combobox').filter({ hasText: 'Select version' }).click();
-    await page.getByRole('option', { name: 'Node.js 18.x' }).first().click();
+    await page.getByRole('option', { name: 'Python 3.11' }).first().click();
 
     await page.click('button:has-text("Continue")');
 
