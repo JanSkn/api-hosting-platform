@@ -1,6 +1,6 @@
 package com.hosting.common.aws;
 
-import com.hosting.common.config.ProjectConfig;
+import com.hosting.common.config.AuthConfig;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -18,7 +18,7 @@ public class UserService {
 
     AdminDeleteUserRequest deleteRequest =
         AdminDeleteUserRequest.builder()
-            .userPoolId(ProjectConfig.Cognito.USER_POOL_ID)
+            .userPoolId(AuthConfig.USER_POOL_ID)
             .username(userId)
             .build();
 

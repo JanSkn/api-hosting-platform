@@ -9,8 +9,9 @@
 
   <modules>
     <module>common-utils</module>
-    <module>core-backend-lambda</module>
-    <module>build-orchestrator-lambda</module>
+    <module>backend-api-lambda</module>
+    <module>sqs-dispatcher-lambda</module>
+    <module>function-deployer-lambda</module>
   </modules>
 
   <properties>

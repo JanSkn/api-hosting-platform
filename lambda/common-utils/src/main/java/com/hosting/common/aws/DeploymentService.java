@@ -4,14 +4,14 @@ import com.hosting.common.aws.dynamo.models.Deployment;
 import com.hosting.common.aws.repositories.BuildQueueRepository;
 import com.hosting.common.aws.repositories.DeploymentMetadataRepository;
 import com.hosting.common.aws.repositories.UserCodeRepository;
-import com.hosting.common.config.ProjectConfig;
+import com.hosting.common.config.S3Config;
 import com.hosting.common.dto.CreateDeploymentRequest;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import com.hosting.common.exceptions.GitHubDownloadException;
 import com.hosting.common.exceptions.InvalidGitHubUrlException;
 import com.hosting.common.exceptions.UserCodeNotUploadedException;
-import com.hosting.common.logging.LoggingConstants;
+import com.hosting.common.logging.LoggingConfig;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,7 +22,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import org.slf4j.MDC;
 
 @ApplicationScoped
 public class DeploymentService {
@@ -39,6 +38,11 @@ public class DeploymentService {
     this.deploymentMetadata = deploymentRepository;
     this.userCode = userCodeRepository;
     this.buildQueue = jobQueueRepository;
+  }
+
+  // for SQS dispatcher
+  public DeploymentService(DeploymentMetadataRepository deploymentRepository) {
+    this.deploymentMetadata = deploymentRepository;
   }
 
   public Optional<Deployment> getDeployment(String userId, String deploymentId) {
@@ -68,13 +72,13 @@ public class DeploymentService {
 
   public UploadUrlResponse generateUploadUrl(String userId, String deploymentId) {
     String uploadUrl = userCode.generatePresignedUploadUrl(userId, deploymentId);
-    return new UploadUrlResponse(uploadUrl, ProjectConfig.S3.PRESIGNED_EXPIRATION_SECONDS);
+    return new UploadUrlResponse(uploadUrl, S3Config.PRESIGNED_EXPIRATION_SECONDS);
   }
 
   // we don't set createdAt here because we will set it after deployment completed
   public String initializeDeployment(String userId, CreateDeploymentRequest request) {
     String deploymentId = java.util.UUID.randomUUID().toString();
-    MDC.put(LoggingConstants.DEPLOYMENT_ID_MDC_KEY, deploymentId);
+    LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
     Log.infof("Initializing deployment (runtime: %s)", request.runtime());
 
     Deployment deployment = new Deployment();
@@ -167,6 +171,30 @@ public class DeploymentService {
     } catch (Exception e) {
       Log.error("Error downloading from GitHub", e);
       throw new GitHubDownloadException("Error downloading from GitHub: " + e.getMessage(), e);
+    }
+  }
+
+  public void addBuildId(String userId, String deploymentId, String buildId) {
+    Optional<Deployment> deploymentOpt = getDeployment(userId, deploymentId);
+    if (deploymentOpt.isPresent()) {
+      Deployment deployment = deploymentOpt.get();
+      deployment.setBuildId(buildId);
+      deploymentMetadata.update(deployment);
+    } else {
+      Log.warn("Could not find deployment to update build ID");
+    }
+  }
+
+  public void setApiUri(String userId, String deploymentId, String apiUri) {
+    Log.infof("Setting user API URI", apiUri);
+    Optional<Deployment> deploymentOpt = getDeployment(userId, deploymentId);
+    if (deploymentOpt.isPresent()) {
+      Deployment deployment = deploymentOpt.get();
+      deployment.setApiUri(apiUri);
+      deployment.setStatus(Status.LIVE);
+      deploymentMetadata.update(deployment);
+    } else {
+      Log.warn("Could not find deployment to update user API URI");
     }
   }
 

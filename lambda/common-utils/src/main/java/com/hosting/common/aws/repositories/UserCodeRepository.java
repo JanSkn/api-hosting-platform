@@ -1,6 +1,6 @@
 package com.hosting.common.aws.repositories;
 
-import com.hosting.common.config.ProjectConfig;
+import com.hosting.common.config.S3Config;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Duration;
@@ -23,17 +23,17 @@ public class UserCodeRepository {
   }
 
   public String generateObjectKey(String userId, String deploymentId) {
-    return String.format("%s/%s/%s.zip", ProjectConfig.S3.USER_CODE_PREFIX, userId, deploymentId);
+    return String.format("%s/%s/%s.zip", S3Config.USER_CODE_PREFIX, userId, deploymentId);
   }
 
   public String generatePresignedUploadUrl(String userId, String deploymentId) {
     String objectKey = generateObjectKey(userId, deploymentId);
     PutObjectPresignRequest presignRequest =
         PutObjectPresignRequest.builder()
-            .signatureDuration(Duration.ofSeconds(ProjectConfig.S3.PRESIGNED_EXPIRATION_SECONDS))
+            .signatureDuration(Duration.ofSeconds(S3Config.PRESIGNED_EXPIRATION_SECONDS))
             .putObjectRequest(
                 req ->
-                    req.bucket(ProjectConfig.S3.USER_CODE_BUCKET)
+                    req.bucket(S3Config.USER_CODE_BUCKET)
                         .key(objectKey)
                         .contentType("application/zip")
                         .build())
@@ -46,7 +46,7 @@ public class UserCodeRepository {
   public boolean doesObjectExist(String userId, String deploymentId) {
     String objectKey = generateObjectKey(userId, deploymentId);
     try {
-      s3Client.headObject(req -> req.bucket(ProjectConfig.S3.USER_CODE_BUCKET).key(objectKey));
+      s3Client.headObject(req -> req.bucket(S3Config.USER_CODE_BUCKET).key(objectKey));
       return true;
     } catch (Exception e) {
       return false;
@@ -58,7 +58,7 @@ public class UserCodeRepository {
     String objectKey = generateObjectKey(userId, deploymentId);
     PutObjectRequest putObjectRequest =
         PutObjectRequest.builder()
-            .bucket(ProjectConfig.S3.USER_CODE_BUCKET)
+            .bucket(S3Config.USER_CODE_BUCKET)
             .key(objectKey)
             .contentType("application/zip")
             .build();
@@ -72,6 +72,6 @@ public class UserCodeRepository {
    */
   public void deleteUserCode(String userId, String deploymentId) {
     String objectKey = generateObjectKey(userId, deploymentId);
-    s3Client.deleteObject(req -> req.bucket(ProjectConfig.S3.USER_CODE_BUCKET).key(objectKey));
+    s3Client.deleteObject(req -> req.bucket(S3Config.USER_CODE_BUCKET).key(objectKey));
   }
 }

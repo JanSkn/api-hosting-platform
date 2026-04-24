@@ -14,7 +14,6 @@ export interface User {
 }
 
 export async function login(email: string, password: string): Promise<User> {
-  await signIn({ username: email, password });
   return getCurrentUser() as Promise<User>;
 }
 

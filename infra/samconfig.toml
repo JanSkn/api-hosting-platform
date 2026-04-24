@@ -11,8 +11,8 @@ capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
 parameter_overrides = [
     "Environment=local", 
     "AwsRegion=eu-central-1",
-    "LambdaMemory=128",
-    "MaxDeploymentsPerUser=5"
+    "LambdaMemory=512",
+    "MaxDeploymentsPerUser=15"
 ]
 
 [staging.deploy.parameters]
@@ -21,7 +21,7 @@ region = "eu-central-1"
 parameter_overrides = [
     "Environment=stg", 
     "AwsRegion=eu-central-1", 
-    "LambdaMemory=128",
+    "LambdaMemory=512",
     "MaxDeploymentsPerUser=5"
 ]
 
@@ -31,6 +31,6 @@ region = "eu-central-1"
 parameter_overrides = [
     "Environment=prod", 
     "AwsRegion=eu-central-1", 
-    "LambdaMemory=256",
+    "LambdaMemory=512",
     "MaxDeploymentsPerUser=5"
 ]

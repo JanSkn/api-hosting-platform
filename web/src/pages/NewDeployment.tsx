@@ -37,6 +37,8 @@ const NewDeployment = () => {
       { value: "node18", label: "Node.js 18.x" },
     ],
     python: [
+      { value: "python314", label: "Python 3.14" },
+      { value: "python313", label: "Python 3.13" },
       { value: "python312", label: "Python 3.12" },
       { value: "python311", label: "Python 3.11" },
       { value: "python310", label: "Python 3.10" },

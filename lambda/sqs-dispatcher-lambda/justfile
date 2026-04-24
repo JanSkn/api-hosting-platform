@@ -1,0 +1,16 @@
+mvn_flags := "-B --no-transfer-progress"
+
+lint:
+    ../mvnw {{ mvn_flags }} spotless:check
+
+format:
+    ../mvnw {{ mvn_flags }} spotless:apply
+
+code-analysis:
+    ../mvnw {{ mvn_flags }} pmd:check pmd:cpd-check
+
+build:
+    ../mvnw {{ mvn_flags }} clean package -DskipTests
+
+unit-test:
+    ../mvnw {{ mvn_flags }} test

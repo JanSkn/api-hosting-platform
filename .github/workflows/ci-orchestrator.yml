@@ -8,9 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       frontend-changed: ${{ steps.filter.outputs.frontend }}
-      build-orchestrator-changed: ${{ steps.filter.outputs.build-orchestrator }}
+      sqs-dispatcher-changed: ${{ steps.filter.outputs.sqs-dispatcher }}
+      function-deployer-changed: ${{ steps.filter.outputs.function-deployer }}
       common-utils-changed: ${{ steps.filter.outputs.common-utils }}
-      core-backend-changed: ${{ steps.filter.outputs.core-backend }}
+      backend-api-changed: ${{ steps.filter.outputs.backend-api }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +28,12 @@ jobs:
               - 'web/**'
             common-utils:
               - 'lambda/common-utils/**'
-            core-backend:
-              - 'lambda/core-backend-lambda/**'
-            build-orchestrator:
-              - 'lambda/build-orchestrator-lambda/**'
+            sqs-dispatcher:
+              - 'lambda/sqs-dispatcher-lambda/**'
+            backend-api:
+              - 'lambda/backend-api-lambda/**'
+            function-deployer:
+              - 'lambda/function-deployer-lambda/**'
 
   run-common-utils-ci-checks:
     needs: detect-code-changes
@@ -41,25 +44,35 @@ jobs:
     with:
       module-name: common-utils
 
-  run-build-orchestrator-ci-checks:
+  run-sqs-dispatcher-ci-checks:
     needs: detect-code-changes
     if: |
-      needs.detect-code-changes.outputs.build-orchestrator-changed == 'true' ||
+      needs.detect-code-changes.outputs.sqs-dispatcher-changed == 'true' ||
       needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
       needs.detect-code-changes.outputs.global-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
-      module-name: build-orchestrator-lambda
+      module-name: sqs-dispatcher-lambda
 
-  run-core-backend-ci-checks:
+  run-function-deployer-ci-checks:
     needs: detect-code-changes
     if: |
-      needs.detect-code-changes.outputs.core-backend-changed == 'true' ||
+      needs.detect-code-changes.outputs.function-deployer-changed == 'true' ||
       needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
       needs.detect-code-changes.outputs.global-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
-      module-name: core-backend-lambda
+      module-name: function-deployer-lambda
+
+  run-backend-api-ci-checks:
+    needs: detect-code-changes
+    if: |
+      needs.detect-code-changes.outputs.backend-api-changed == 'true' ||
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.global-changed == 'true'
+    uses: ./.github/workflows/backend-ci.yml
+    with:
+      module-name: backend-api-lambda
 
   run-frontend-ci-checks:
     needs: detect-code-changes

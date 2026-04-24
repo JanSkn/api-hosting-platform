@@ -13,8 +13,6 @@ import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 
-import AmplifyLoginTest from "./pages/AmplifyLoginTest.tsx";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -26,7 +24,6 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/login-test" element={<AmplifyLoginTest />} />
           <Route path="/register" element={<Register />} />
 
           {/* Protected routes – redirect to /login if not authenticated */}

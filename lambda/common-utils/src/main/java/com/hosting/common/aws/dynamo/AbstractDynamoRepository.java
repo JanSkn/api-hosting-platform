@@ -11,7 +11,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.IgnoreNullsMode;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 
 // DynamoDB exceptions are handled globally by DynamoDbExceptionMapper when called by
-// core-backend-lambda
+// backend-api-lambda
 public abstract class AbstractDynamoRepository<T> {
 
   protected DynamoDbTable<T> table;

@@ -2,3 +2,15 @@ mvn_flags := "-B --no-transfer-progress"
 
 install:
     ./mvnw {{ mvn_flags }} clean install -DskipTests
+
+format:
+    just -f common-utils/justfile format
+    just -f backend-api-lambda/justfile format
+    just -f function-deployer-lambda/justfile format
+    just -f sqs-dispatcher-lambda/justfile format
+
+code-analysis:
+    just -f common-utils/justfile code-analysis
+    just -f backend-api-lambda/justfile code-analysis
+    just -f function-deployer-lambda/justfile code-analysis
+    just -f sqs-dispatcher-lambda/justfile code-analysis

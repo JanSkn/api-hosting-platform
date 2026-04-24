@@ -1,8 +1,9 @@
 # used by backend-ci.yml/frontend-ci.yml or use from root with just <module-name> <recipe-name>
 mod lambda "lambda"
 mod common-utils "lambda/common-utils"
-mod core-backend-lambda "lambda/core-backend-lambda"
-mod build-orchestrator-lambda "lambda/build-orchestrator-lambda"
+mod backend-api-lambda "lambda/backend-api-lambda"
+mod sqs-dispatcher-lambda "lambda/sqs-dispatcher-lambda"
+mod function-deployer-lambda "lambda/function-deployer-lambda"
 mod web "web"
 
 assume profile:

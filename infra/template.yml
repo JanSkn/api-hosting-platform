@@ -8,6 +8,12 @@ Description: Backend and Frontend setup for APIForge.
 Globals:
   Function:
     Runtime: java21
+    Environment:
+      # global environment variables for all lambdas, must be set in GlobalConfig.java in common-utils
+      Variables:
+        ENV: !Ref Environment
+        AWS_REGION: !Ref AwsRegion
+        LOG_LEVEL: "INFO"
 
 Parameters:
   Environment:
@@ -19,12 +25,16 @@ Parameters:
     Type: Number
   MaxDeploymentsPerUser:
     Type: Number
+  # those should not be set manually by the samconfig.toml but use the default value
   DeploymentsMetadataTableName:
     Type: String
     Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
     Default: "code-uploads"
+  EcrRepositoryName:
+    Type: String
+    Default: "user-apps"
 
 Conditions:
   isNotLocal: !Not [ !Equals [ !Ref Environment, local ] ]
@@ -47,7 +57,7 @@ Resources:
       StageName: !Ref Environment
       # as we set the gateway as proxy, it does not add any CORS headers, so we set them in Quarkus (application.properties) and let API Gateway forward them
       Cors:
-        AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'"
         AllowHeaders: "'Accept,Authorization,Content-Type,X-Requested-With'"
         AllowOrigin: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'" ]
       Auth:
@@ -57,11 +67,11 @@ Resources:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt AuthStack.Outputs.UserPoolArn
 
-  CoreBackendFunction:
+  BackendAPIFunction:
     Type: AWS::Serverless::Function
     Properties:
       # Fat JAR with maven shade plugin
-      CodeUri: ../lambda/core-backend-lambda/target/function.zip
+      CodeUri: ../lambda/backend-api-lambda/target/function.zip
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Timeout: 15
       Architectures:
@@ -72,7 +82,7 @@ Resources:
         HealthEvent:
           Type: Api
           Properties:
-            Path: /api/v1/health # renaming this endpoint requires renaming in core backend health resource
+            Path: /api/v1/health # renaming this endpoint requires renaming in backend api health resource
             Method: GET
             RestApiId: !Ref APIGateway
             Auth:
@@ -85,17 +95,14 @@ Resources:
             Method: ANY
       Environment:
         Variables:
-          ENV: !Ref Environment
-          AWS_REGION: !Ref AwsRegion # that deployment region and lambda region are the same
-          LOG_LEVEL: "INFO"
           # for CORS header in lambda responses, set by Quarkus in application.properties
           ALLOWED_ORIGIN: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
           COGNITO_USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
-          DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable # for core backend lambda to read/write deployment metadata
-          MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser # for build orchestrator lambda to check before starting a build
-          BUILD_QUEUE_URL: !Ref BuildJobQueue # for sending build requests from core backend to build orchestrator lambda
-          USER_CODE_BUCKET: !Ref UserCodeBucket # for generating presigned URLs for user code uploads
-          USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
+          DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
+          MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser 
+          BUILD_QUEUE_URL: !Ref BuildJobQueue 
+          USER_CODE_BUCKET: !Ref UserCodeBucket
+          USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
       Policies:
         # generate presigned S3 URLs
         - S3ReadPolicy:
@@ -104,6 +111,7 @@ Resources:
             BucketName: !Ref UserCodeBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref DeploymentsMetadataTable
+      # TODO sqs etc
 
   DeploymentsMetadataTable:
   # not AWS::Serverless:SimpleTable for secondary key
@@ -111,7 +119,7 @@ Resources:
     Properties:
       TableName: !Ref DeploymentsMetadataTableName
       BillingMode: PAY_PER_REQUEST 
-      # renaming of userId or deploymentId requires renaming in core backend lambda data model
+      # renaming of userId or deploymentId requires renaming in backend api lambda data model
       AttributeDefinitions:
         - AttributeName: userId
           AttributeType: S
@@ -128,7 +136,7 @@ Resources:
   UserCodeBucket:
     Type: AWS::S3::Bucket
     Properties:
-      # block any public access, only presigned URLs generated from core backend lambda
+      # block any public access, only presigned URLs generated from backend api lambda
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -159,23 +167,28 @@ Resources:
       VisibilityTimeout: 90 # lambda timeout x 6 retries
       MessageRetentionPeriod: 86400
 
-  # BuildOrchestratorFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     CodeUri: ../lambda/build-orchestrator-lambda/target/function.zip
-  #     Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
-  #     Events:
-  #       SQSEvent:
-  #         Type: SQS
-  #         Properties:
-  #           Queue: !GetAtt BuildJobQueue.Arn
-  #           BatchSize: 1 # one deployment per instance
-  #     Environment:
-  #       Variables:
-  #         ENV: !Ref Environment
-  #         AWS_REGION: !Ref AwsRegion
-  #         LOG_LEVEL: !If [ isNotLocal, "INFO", "DEBUG" ]
-          
+  SQSDispatcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../lambda/sqs-dispatcher-lambda/target/function.zip
+      Handler: com.hosting.dispatcher.handler.SqsDispatcherHandler::handleRequest
+      Timeout: 30 # if CodeBuild startBuild takes very long
+      MemorySize: 128 # only dispatching, not much memory needed
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BuildJobQueue.Arn
+            BatchSize: 1 # one deployment per instance
+      Environment:
+        Variables:
+          CODEBUILD_PROJECT_NAME: !Ref CodeBuild
+          USER_CODE_BUCKET: !Ref UserCodeBucket
+          USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
+          ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
+      #Policies:
+        # TODO
+
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -216,11 +229,6 @@ Resources:
                   - ecr:PutImage
                   - ecr:UploadLayerPart
                 Resource: !GetAtt EcrRepository.Arn
-              # 4. user Lambda update (end of deployment, see buildspec.yml)
-              - Effect: Allow
-                Action:
-                  - lambda:UpdateFunctionCode
-                Resource: "*" # TODO more specific for user lambdas only
 
   CodeBuild:
     Type: AWS::CodeBuild::Project
@@ -232,24 +240,19 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-        PrivilegedMode: true # required für Docker builds
-        EnvironmentVariables:
-          # set here so that it is fixed, all others in buildspec.yml will be set by Java SDK
-          - Name: REPOSITORY_URI
-            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/user-apps"
+        PrivilegedMode: true # required für Docker builds          
       Source:
         Type: S3
         Location: !Sub "${UserCodeBucket}/${UserCodeBucketPrefix}"
-      LogsConfig:
-        CloudWatchLogs:
-          Status: ENABLED
-          GroupName: !Ref CoreBackendLogGroup
+      # LogsConfig:
+      #   CloudWatchLogs:
+      #     Status: ENABLED
+      #     GroupName: !Ref CodeBuildLogGroup
 
   EcrRepository:
     Type: AWS::ECR::Repository
     Properties:
-      # name must be same in CodeBuild REPOSITORY_URI
-      RepositoryName: "user-apps"
+      RepositoryName: !Ref EcrRepositoryName
       LifecyclePolicy:
         # first rule would only apply if updated image with same tag
         # --> old gets untagged
@@ -282,25 +285,59 @@ Resources:
             ]
           }
 
-  CoreBackendLogGroup:
+  FunctionDeployer: 
+  # triggered by custom EventBridge event after codebuild uploaded to ECR to deploy user's lambda with the image
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../lambda/function-deployer-lambda/target/function.zip
+      Handler: com.hosting.deployer.handler.FunctionDeployerHandler::handleRequest
+      Timeout: 30 # if deployment takes very long
+      MemorySize: 128 # only creation, not much memory needed
+      Events:
+        DeploymentEvent:
+          Type: EventBridgeRule
+          Properties:
+            # must match the event in EventBridgeRepository.java
+            Pattern:
+              source:
+                - "com.hosting.dispatcher"
+              detail-type:
+                - "CodeBuildJobStarted"
+              detail:
+                status:
+                  - "SUCCESS"
+      Environment:
+        Variables:
+            ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
+      #Policies:
+        # TODO
+
+  BackendAPILogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       # name must be same as Lambda function name to control default log created by lambda
-      LogGroupName: !Sub "/aws/lambda/${CoreBackendFunction}" 
+      LogGroupName: !Sub "/aws/lambda/${BackendAPIFunction}" 
       RetentionInDays: 7
 
-  CodeBuildLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/codebuild/${CodeBuild}" 
-      RetentionInDays: 7
-
-  # BuildOrchestratorFunctionLogGroup:
+  # CodeBuildLogGroup:
   #   Type: AWS::Logs::LogGroup
   #   Properties:
-  #     # name must be same as Lambda function name to control default log created by lambda
-  #     LogGroupName: !Sub "/aws/lambda/${BuildOrchestratorFunction}" 
+  #     LogGroupName: !Sub "/aws/codebuild/${CodeBuild}" 
   #     RetentionInDays: 7
+
+  SQSDispatcherLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      # name must be same as Lambda function name to control default log created by lambda
+      LogGroupName: !Sub "/aws/lambda/${SQSDispatcherFunction}" 
+      RetentionInDays: 7
+
+  FunctionDeployerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      # name must be same as Lambda function name to control default log created by lambda
+      LogGroupName: !Sub "/aws/lambda/${FunctionDeployer}" 
+      RetentionInDays: 7
 
 # changing the output names requires renaming in connect-frontend.sh
 Outputs:
@@ -319,16 +356,3 @@ Outputs:
   UserPoolClientId:
     Description: "UserPoolClient ID"
     Value: !GetAtt AuthStack.Outputs.UserPoolClientId
-
-  SQSQueueUrl:
-    Description: "Auto-generated SQS Queue URL"
-    Value: !Ref BuildJobQueue
-
-  EcrRepositoryUri:
-    Description: "ECR Repository URI"
-    Value: !GetAtt EcrRepository.RepositoryUri
-
-  WebBucketName:
-    Condition: isNotLocal
-    Description: "The S3 bucket for web assets"
-    Value: !GetAtt FrontendStack.Outputs.WebBucketName
