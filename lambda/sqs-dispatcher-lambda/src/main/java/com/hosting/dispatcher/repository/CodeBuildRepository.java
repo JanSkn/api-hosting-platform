@@ -3,14 +3,17 @@ package com.hosting.dispatcher.repository;
 import com.hosting.common.aws.sqs.models.BuildMessage;
 import com.hosting.common.config.CodeBuildConfig;
 import com.hosting.common.config.EcrConfig;
+import com.hosting.common.config.GlobalConfig;
 import com.hosting.common.config.S3Config;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.codebuild.CodeBuildClient;
+import software.amazon.awssdk.services.codebuild.model.EnvironmentVariable;
 import software.amazon.awssdk.services.codebuild.model.StartBuildRequest;
 import software.amazon.awssdk.services.codebuild.model.StartBuildResponse;
 
@@ -37,18 +40,32 @@ public class CodeBuildRepository {
     String repositoryUri = EcrConfig.REPOSITORY_URI;
     String buildspec = generateBuildspec(dockerfileContent, imageTag, repositoryUri);
 
-    String s3SourcePath =
-        String.format(
-            "%s/%s/%s",
-            S3Config.USER_CODE_BUCKET, S3Config.USER_CODE_PREFIX, buildMessage.s3ObjectKey());
+    String s3SourcePath = String.format(
+        "%s/%s/%s",
+        S3Config.USER_CODE_BUCKET, S3Config.USER_CODE_PREFIX, buildMessage.s3ObjectKey());
 
-    StartBuildRequest startBuildRequest =
-        StartBuildRequest.builder()
-            .projectName(CodeBuildConfig.PROJECT_NAME)
-            .buildspecOverride(buildspec)
-            .sourceLocationOverride(s3SourcePath)
-            .sourceTypeOverride("S3")
-            .build();
+    // set env variables to pass IDs and image tag in event bridge event to the
+    // function deployer
+    // lambda
+    List<EnvironmentVariable> envVars = List.of(
+        EnvironmentVariable.builder().name("USER_ID").value(buildMessage.userId()).build(),
+        EnvironmentVariable.builder()
+            .name("DEPLOYMENT_ID")
+            .value(buildMessage.deploymentId())
+            .build(),
+        EnvironmentVariable.builder()
+            .name("CORRELATION_ID")
+            .value(buildMessage.correlationId())
+            .build(),
+        EnvironmentVariable.builder().name("IMAGE_TAG").value(imageTag).build());
+
+    StartBuildRequest startBuildRequest = StartBuildRequest.builder()
+        .projectName(CodeBuildConfig.PROJECT_NAME)
+        .buildspecOverride(buildspec)
+        .sourceLocationOverride(s3SourcePath)
+        .sourceTypeOverride("S3")
+        .environmentVariablesOverride(envVars)
+        .build();
 
     StartBuildResponse response = codeBuildClient.startBuild(startBuildRequest);
     String buildId = response.build().id();
@@ -77,12 +94,13 @@ public class CodeBuildRepository {
         + "phases:\n"
         + "  pre_build:\n"
         + "    commands:\n"
-        + "      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin "
+        + "      - aws ecr get-login-password --region " + GlobalConfig.AWS_REGION
+        + " | docker login --username AWS --password-stdin "
         + repositoryUri
         + "\n"
         + "  build:\n"
         + "    commands:\n"
-        + "      - echo \"Building Dockerfile from template\"\n"
+        + "      - echo \"Building Dockerfile from template for user\"\n"
         + "      - cat << 'EOF' > Dockerfile\n"
         + dockerfileContent
         + "\n"

@@ -14,10 +14,16 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jackson</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -37,10 +43,6 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>codebuild</artifactId>
       <version>2.20.0</version>
-    </dependency>
-    <dependency>
-      <groupId>software.amazon.awssdk</groupId>
-      <artifactId>eventbridge</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>

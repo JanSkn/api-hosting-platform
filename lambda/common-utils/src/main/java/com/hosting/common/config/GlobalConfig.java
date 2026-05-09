@@ -3,14 +3,10 @@ package com.hosting.common.config;
 import java.net.URI;
 import software.amazon.awssdk.regions.Region;
 
-public final class GlobalConfig {
+public final class GlobalConfig extends BaseConfig {
 
-  private GlobalConfig() {
-    throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-  }
-
-  public static final String ENVIRONMENT = System.getenv("ENV");
-  public static final Region AWS_REGION = Region.of(System.getenv("AWS_REGION"));
+  public static final String ENVIRONMENT = getOrThrow("ENV");
+  public static final Region AWS_REGION = Region.of(getOrThrow("AWS_REGION"));
 
   /**
    * INTERNAL LOCAL ENDPOINT: Used by the Lambda function code to talk to LocalStack services.

@@ -5,6 +5,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Backend and Frontend setup for APIForge. 
 
+# TODO also logging policies for the lambda policies
+
 Globals:
   Function:
     Runtime: java21
@@ -13,7 +15,7 @@ Globals:
       Variables:
         ENV: !Ref Environment
         AWS_REGION: !Ref AwsRegion
-        LOG_LEVEL: "INFO"
+        LOG_LEVEL: "INFO" # renaming this requires renaming in log4j2.xml as well
 
 Parameters:
   Environment:
@@ -74,6 +76,7 @@ Resources:
       CodeUri: ../lambda/backend-api-lambda/target/function.zip
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Timeout: 15
+      ReservedConcurrentExecutions: !If [isNotLocal, 10, 1]
       Architectures:
         - arm64
       MemorySize: !Ref LambdaMemory
@@ -103,7 +106,7 @@ Resources:
           BUILD_QUEUE_URL: !Ref BuildJobQueue 
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
-      Policies:
+      Policies: # TODO missing
         # generate presigned S3 URLs
         - S3ReadPolicy:
             BucketName: !Ref UserCodeBucket
@@ -160,12 +163,19 @@ Resources:
   BuildJobQueue:
     Type: AWS::SQS::Queue
     Properties:
-      # no duplicates
       FifoQueue: true
       ContentBasedDeduplication: true
-      # if SQS lambda crashes
-      VisibilityTimeout: 90 # lambda timeout x 6 retries
-      MessageRetentionPeriod: 86400
+      VisibilityTimeout: 90
+      MessageRetentionPeriod: 604800 # 7 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt BuildJobDLQ.Arn
+        maxReceiveCount: 3
+
+  BuildJobDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      MessageRetentionPeriod: 604800 # 7 days
 
   SQSDispatcherFunction:
     Type: AWS::Serverless::Function
@@ -186,8 +196,14 @@ Resources:
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
           ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
-      #Policies:
-        # TODO
+          DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeploymentsMetadataTable
+        - Statement:
+            - Effect: Allow
+              Action: codebuild:StartBuild
+              Resource: !GetAtt CodeBuild.Arn
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -286,7 +302,7 @@ Resources:
           }
 
   FunctionDeployer: 
-  # triggered by custom EventBridge event after codebuild uploaded to ECR to deploy user's lambda with the image
+  # triggered by EventBridge event after codebuild uploaded to ECR to deploy user's lambda with the image
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../lambda/function-deployer-lambda/target/function.zip
@@ -297,15 +313,16 @@ Resources:
         DeploymentEvent:
           Type: EventBridgeRule
           Properties:
-            # must match the event in EventBridgeRepository.java
             Pattern:
               source:
-                - "com.hosting.dispatcher"
+                - "aws.codebuild"
               detail-type:
-                - "CodeBuildJobStarted"
+                - "CodeBuild Build State Change"
               detail:
-                status:
-                  - "SUCCESS"
+                build-status:
+                  - "SUCCEEDED"
+                project-name:
+                  - !Ref CodeBuild
       Environment:
         Variables:
             ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"

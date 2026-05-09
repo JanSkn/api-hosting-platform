@@ -3,6 +3,8 @@ package com.hosting.common.aws;
 import com.hosting.common.config.GlobalConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.services.codebuild.CodeBuildClient;
 import software.amazon.awssdk.services.codebuild.CodeBuildClientBuilder;
@@ -10,8 +12,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClientBuilder;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
-import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
-import software.amazon.awssdk.services.eventbridge.EventBridgeClientBuilder;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.LambdaClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -39,11 +39,14 @@ public class ClientProducer {
     S3ClientBuilder builder = S3Client.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT).forcePathStyle(true);
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
+          .forcePathStyle(true);
     }
 
-    return builder
-        .build();
+    return builder.build();
   }
 
   /**
@@ -62,6 +65,8 @@ public class ClientProducer {
 
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_EXTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
           .serviceConfiguration(s3Configuration);
     }
 
@@ -78,11 +83,13 @@ public class ClientProducer {
     DynamoDbClientBuilder builder = DynamoDbClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
     }
 
-    DynamoDbClient standardClient = builder
-        .build();
+    DynamoDbClient standardClient = builder.build();
     return DynamoDbEnhancedClient.builder().dynamoDbClient(standardClient).build();
   }
 
@@ -96,11 +103,13 @@ public class ClientProducer {
     SqsClientBuilder builder = SqsClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
     }
 
-    return builder
-        .build();
+    return builder.build();
   }
 
   /**
@@ -111,26 +120,13 @@ public class ClientProducer {
     CodeBuildClientBuilder builder = CodeBuildClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
     }
 
-    return builder
-        .build();
-  }
-
-  /**
-   * Returns an EventBridgeClient. It automatically configures the region and local endpoint
-   * overrides if running in a local environment.
-   */
-  public EventBridgeClient eventBridgeClient() { // not used by quarkus, so no annotations
-    EventBridgeClientBuilder builder = EventBridgeClient.builder().region(GlobalConfig.AWS_REGION);
-
-    if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
-    }
-
-    return builder
-        .build();
+    return builder.build();
   }
 
   /**
@@ -144,11 +140,13 @@ public class ClientProducer {
         CognitoIdentityProviderClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
     }
 
-    return builder
-        .build();
+    return builder.build();
   }
 
   /**
@@ -159,10 +157,12 @@ public class ClientProducer {
     LambdaClientBuilder builder = LambdaClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
-      builder.endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT);
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
     }
 
-    return builder
-        .build();
+    return builder.build();
   }
 }

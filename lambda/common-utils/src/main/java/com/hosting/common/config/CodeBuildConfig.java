@@ -1,10 +1,6 @@
 package com.hosting.common.config;
 
-public final class CodeBuildConfig {
+public final class CodeBuildConfig extends BaseConfig {
 
-  private CodeBuildConfig() {
-    throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-  }
-
-  public static final String PROJECT_NAME = System.getenv("CODEBUILD_PROJECT_NAME");
+  public static final String PROJECT_NAME = getOrThrow("CODEBUILD_PROJECT_NAME");
 }

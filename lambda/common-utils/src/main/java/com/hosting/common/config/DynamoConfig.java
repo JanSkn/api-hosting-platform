@@ -1,11 +1,6 @@
 package com.hosting.common.config;
 
-public final class DynamoConfig {
+public final class DynamoConfig extends BaseConfig {
 
-  private DynamoConfig() {
-    throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-  }
-
-  public static final String DEPLOYMENTS_METADATA_TABLE =
-      System.getenv("DEPLOYMENTS_METADATA_TABLE");
+  public static final String DEPLOYMENTS_METADATA_TABLE = getOrThrow("DEPLOYMENTS_METADATA_TABLE");
 }
