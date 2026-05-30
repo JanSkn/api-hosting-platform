@@ -3,8 +3,8 @@
 set -euo pipefail
 
 ENVIRONMENT="${1:?Environment required (local|stg|prod)}"
-AWS_REGION=$(grep -A 15 "\[${ENVIRONMENT}.deploy.parameters\]" samconfig.toml | grep "region =" | head -n 1 | cut -d'"' -f2 | xargs)
-STACK_NAME=$(grep -A 15 "\[${ENVIRONMENT}.deploy.parameters\]" samconfig.toml | grep "stack_name =" | head -n 1 | cut -d'"' -f2 | xargs)
+AWS_REGION="${2:?Region required}"
+STACK_NAME="${3:?Stack Name required}"
 
 if [[ "$ENVIRONMENT" == "local" ]]; then
   AWS_CMD="awslocal"

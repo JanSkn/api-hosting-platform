@@ -1,5 +1,6 @@
 # Prerequisites
 For local development, install
+- docker
 - just
 - aws-vault
 - localstack

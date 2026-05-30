@@ -21,8 +21,5 @@ RUN if [ -f "requirements.txt" ]; then \
         uv pip install --system .; \
     fi
 
-ENV PORT=8080
-ENV APP_MODULE=main:app
-
 # TODO use fastapi instead of uvicorn?
-CMD exec uv run uvicorn --port=$PORT $APP_MODULE
+CMD exec uv run uvicorn --port=8080 main:app

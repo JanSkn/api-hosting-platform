@@ -12,6 +12,8 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClientBuilder;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
+import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
+import software.amazon.awssdk.services.eventbridge.EventBridgeClientBuilder;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.LambdaClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -118,6 +120,24 @@ public class ClientProducer {
    */
   public CodeBuildClient codeBuildClient() { // not used by quarkus, so no annotations
     CodeBuildClientBuilder builder = CodeBuildClient.builder().region(GlobalConfig.AWS_REGION);
+
+    if (GlobalConfig.isLocal()) {
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Returns an EventBridgeClient. It automatically configures the region and local endpoint
+   * overrides if running in a local environment.
+   */
+  public EventBridgeClient eventBridgeClient() {
+
+    EventBridgeClientBuilder builder = EventBridgeClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocal()) {
       builder

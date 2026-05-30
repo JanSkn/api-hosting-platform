@@ -14,6 +14,10 @@ Deploy your first API in under a minute. Upload a `.zip` file containing your ha
 
 ## Project Structure
 
+!!! for node, package.json and package-lock.json must be in root, entry point must be named index.js
+for python, TODO
+
+
 ```
 my-api/
 ├── handler.js    # Entry point (Node.js)

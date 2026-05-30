@@ -99,7 +99,8 @@ public class DeploymentService {
   public void triggerDeployment(String userId, String deploymentId) {
     Log.info("Triggering deployment");
     Deployment deployment = deploymentMetadata.get(userId, deploymentId).orElseThrow();
-    boolean isGithubDeployment = deployment.getGithubUrl() != null && !deployment.getGithubUrl().isEmpty();
+    boolean isGithubDeployment =
+        deployment.getGithubUrl() != null && !deployment.getGithubUrl().isEmpty();
 
     if (isGithubDeployment) {
       downloadAndUploadFromGithub(userId, deployment);
@@ -139,12 +140,14 @@ public class DeploymentService {
 
     String zipUrl = String.format("https://api.github.com/repos/%s/%s/zipball", owner, repo);
 
-    try (HttpClient client = HttpClient.newBuilder()
-        .followRedirects(HttpClient.Redirect.ALWAYS)
-        .connectTimeout(Duration.ofSeconds(10))
-        .build()) {
+    try (HttpClient client =
+        HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build()) {
 
-      HttpRequest request = HttpRequest.newBuilder().uri(URI.create(zipUrl)).timeout(Duration.ofSeconds(60)).build();
+      HttpRequest request =
+          HttpRequest.newBuilder().uri(URI.create(zipUrl)).timeout(Duration.ofSeconds(60)).build();
 
       HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 

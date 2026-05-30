@@ -106,6 +106,7 @@ Resources:
           BUILD_QUEUE_URL: !Ref BuildJobQueue 
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
+          DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
       Policies: # TODO missing
         # generate presigned S3 URLs
         - S3ReadPolicy:
@@ -156,9 +157,20 @@ Resources:
             AllowedMethods:
               - GET
               - PUT
+              - POST
+              - DELETE
+              - HEAD
             AllowedOrigins:
-              - !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
-            MaxAge: 3000
+              - "*"
+            MaxAge: 3600
+
+  DockerfileTemplateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
   BuildJobQueue:
     Type: AWS::SQS::Queue
@@ -182,7 +194,7 @@ Resources:
     Properties:
       CodeUri: ../lambda/sqs-dispatcher-lambda/target/function.zip
       Handler: com.hosting.dispatcher.handler.SqsDispatcherHandler::handleRequest
-      Timeout: 30 # if CodeBuild startBuild takes very long
+      Timeout: !If [ isNotLocal, 30, 120 ] # if CodeBuild startBuild takes very long, longer for local development due to polling for build completion
       MemorySize: 128 # only dispatching, not much memory needed
       Events:
         SQSEvent:
@@ -195,6 +207,7 @@ Resources:
           CODEBUILD_PROJECT_NAME: !Ref CodeBuild
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
+          DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
           ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
           DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
       Policies:
@@ -231,7 +244,15 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
                 Resource: !Sub "arn:aws:s3:::${UserCodeBucket}/*"
+              # read docker templates from S3
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${DockerfileTemplateBucket}/*"
               # ECR login & push
               - Effect: Allow
                 Action:
@@ -257,9 +278,8 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
         PrivilegedMode: true # required für Docker builds          
-      Source:
-        Type: S3
-        Location: !Sub "${UserCodeBucket}/${UserCodeBucketPrefix}"
+      Source: # override in CodeBuildRepository to specific user code, but mandatory field
+        Type: NO_SOURCE
       # LogsConfig:
       #   CloudWatchLogs:
       #     Status: ENABLED
@@ -321,11 +341,12 @@ Resources:
               detail:
                 build-status:
                   - "SUCCEEDED"
-                project-name:
+                project-name: # project name must be passed via environment variable in SQS dispatcher and match the one in CodeBuild resource
                   - !Ref CodeBuild
       Environment:
         Variables:
             ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
+            DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
       #Policies:
         # TODO
 
@@ -373,3 +394,6 @@ Outputs:
   UserPoolClientId:
     Description: "UserPoolClient ID"
     Value: !GetAtt AuthStack.Outputs.UserPoolClientId
+  DockerfileTemplateBucket:
+    Description: "Bucket containing Dockerfile templates"
+    Value: !Ref DockerfileTemplateBucket

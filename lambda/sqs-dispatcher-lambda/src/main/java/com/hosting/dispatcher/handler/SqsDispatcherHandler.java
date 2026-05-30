@@ -15,17 +15,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.services.codebuild.CodeBuildClient;
+import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
 
 public class SqsDispatcherHandler implements RequestHandler<SQSEvent, Void> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SqsDispatcherHandler.class);
   ClientProducer clientProducer = new ClientProducer();
   private final CodeBuildClient codeBuildClient = clientProducer.codeBuildClient();
+  private final EventBridgeClient eventBridgeClient = clientProducer.eventBridgeClient();
   private final DynamoDbEnhancedClient dynamoDbClient = clientProducer.dynamoDbClient();
-  private final DeploymentMetadataRepository deploymentMetadataRepository = new DeploymentMetadataRepository(
-      dynamoDbClient);
-  private final DeploymentService deploymentService = new DeploymentService(deploymentMetadataRepository);
-  private final CodeBuildService codeBuildService = new CodeBuildService(codeBuildClient, deploymentService);
+  private final DeploymentMetadataRepository deploymentMetadataRepository =
+      new DeploymentMetadataRepository(dynamoDbClient);
+  private final DeploymentService deploymentService =
+      new DeploymentService(deploymentMetadataRepository);
+  private final CodeBuildService codeBuildService =
+      new CodeBuildService(codeBuildClient, deploymentService, eventBridgeClient);
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Override

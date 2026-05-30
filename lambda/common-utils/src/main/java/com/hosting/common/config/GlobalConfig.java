@@ -20,6 +20,9 @@ public final class GlobalConfig extends BaseConfig {
   /** EXTERNAL LOCAL ENDPOINT: External endpoint accessed on the host machine. */
   public static final URI AWS_LOCAL_EXTERNAL_ENDPOINT = URI.create("http://localhost:4566");
 
+  /** The container name of LocalStack as defined in docker-compose.yml */
+  public static final String LOCALSTACK_CONTAINER_NAME = "localstack-main";
+
   public static boolean isLocal() {
     return "local".equalsIgnoreCase(ENVIRONMENT);
   }
