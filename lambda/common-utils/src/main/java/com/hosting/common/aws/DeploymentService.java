@@ -3,6 +3,8 @@ package com.hosting.common.aws;
 import com.hosting.common.aws.dynamo.models.Deployment;
 import com.hosting.common.aws.repositories.BuildQueueRepository;
 import com.hosting.common.aws.repositories.DeploymentMetadataRepository;
+import com.hosting.common.aws.repositories.EcrRepository;
+import com.hosting.common.aws.repositories.LambdaDeploymentRepository;
 import com.hosting.common.aws.repositories.UserCodeRepository;
 import com.hosting.common.config.S3Config;
 import com.hosting.common.dto.CreateDeploymentRequest;
@@ -14,8 +16,6 @@ import com.hosting.common.exceptions.UserCodeNotUploadedException;
 import com.hosting.common.logging.LoggingConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import com.hosting.common.aws.repositories.EcrRepository;
-import com.hosting.common.aws.repositories.LambdaDeploymentRepository;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -52,7 +52,7 @@ public class DeploymentService {
     this.ecrRepository = ecrRepository;
   }
 
-  // for SQS dispatcher and Function Deployer
+  // for SQS dispatcher and Function deployer
   public DeploymentService(DeploymentMetadataRepository deploymentRepository) {
     this.deploymentMetadata = deploymentRepository;
   }
@@ -209,10 +209,10 @@ public class DeploymentService {
   public void deleteDeployment(String userId, String deploymentId) {
     LOGGER.info("Deleting deployment", deploymentId);
 
-    String functionName = "app-" + deploymentId;
-    lambdaDeploymentRepository.deleteFunction(functionName);
+    lambdaDeploymentRepository.deleteFunction(deploymentId);
 
     String imageTag = userId + "_" + deploymentId;
+    LoggingConfig.put(LoggingConfig.IMAGE_TAG_MDC_KEY, imageTag);
     ecrRepository.deleteImage(imageTag);
 
     deploymentMetadata.delete(userId, deploymentId);

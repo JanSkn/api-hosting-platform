@@ -31,15 +31,15 @@ public class EcrRepository {
   public void deleteImage(String imageTag) {
     try {
       String repositoryName = getRepositoryName();
-      BatchDeleteImageRequest deleteImageRequest = BatchDeleteImageRequest.builder()
-          .repositoryName(repositoryName)
-          .imageIds(ImageIdentifier.builder().imageTag(imageTag).build())
-          .build();
+      BatchDeleteImageRequest deleteImageRequest =
+          BatchDeleteImageRequest.builder()
+              .repositoryName(repositoryName)
+              .imageIds(ImageIdentifier.builder().imageTag(imageTag).build())
+              .build();
       ecrClient.batchDeleteImage(deleteImageRequest);
-      // TODO move image tag and repository name into mdc
-      LOGGER.info("Successfully deleted ECR image with tag: {} from repository: {}", imageTag, repositoryName);
+      LOGGER.info("Successfully deleted ECR image from repository: {}", repositoryName);
     } catch (Exception e) {
-      LOGGER.error("Failed to delete ECR image: {}", imageTag, e);
+      LOGGER.error("Failed to delete ECR image", e);
     }
   }
 }

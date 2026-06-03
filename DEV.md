@@ -22,7 +22,7 @@ For local development, install
 `infra/samconfig.toml` is the single source of truth to configure the AWS region, stack name and environment variables.
 
 For local development, use `just run-localstack` to spin up the localstack container, then `just deploy-stack local` 
-to deploy the stack locally. 
+to deploy the stack locally (install the `.zip`files with `just lambda install-all` or `just lambda install <module-name>`). 
 
 - **`secrets/`**: Contains local dev secrets (e.g., LocalStack auth token).
 - **`infra/`**: Contains SAM templates for the AWS architecture.

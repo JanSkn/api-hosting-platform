@@ -1,7 +1,10 @@
 mvn_flags := "-B --no-transfer-progress"
 
-install:
-    ./mvnw {{ mvn_flags }} clean install -DskipTests
+install-all:
+   ./mvnw {{ mvn_flags }} clean install -DskipTests
+
+install target-module:
+    mvn clean install -pl :{{ target-module }} -am
 
 format:
     just -f common-utils/justfile format

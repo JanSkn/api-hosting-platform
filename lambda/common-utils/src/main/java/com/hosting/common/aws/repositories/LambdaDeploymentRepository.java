@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
 
-// TODO move ids into mdc
 @ApplicationScoped
 public class LambdaDeploymentRepository {
 
@@ -20,8 +19,13 @@ public class LambdaDeploymentRepository {
     this.lambdaClient = lambdaClient;
   }
 
-  public void createFunction(String functionName, String imageUri, String accountId) {
+  private String getFunctionName(String deploymentId) {
+    return "app-" + deploymentId;
+  }
+
+  public void createFunction(String deploymentId, String imageUri, String accountId) {
     String roleArn = String.format("arn:aws:iam::%s:role/UserFunctionRole", accountId);
+    String functionName = getFunctionName(deploymentId);
 
     try {
       lambdaClient.createFunction(
@@ -41,7 +45,9 @@ public class LambdaDeploymentRepository {
     }
   }
 
-  public String setupFunctionUrl(String functionName) {
+  public String setupFunctionUrl(String deploymentId) {
+    String functionName = getFunctionName(deploymentId);
+
     try {
       CreateFunctionUrlConfigResponse response =
           lambdaClient.createFunctionUrlConfig(
@@ -70,11 +76,12 @@ public class LambdaDeploymentRepository {
     }
   }
 
-  public void deleteFunction(String functionName) {
+  public void deleteFunction(String deploymentId) {
+    String functionName = getFunctionName(deploymentId);
+
     try {
-      DeleteFunctionRequest deleteRequest = DeleteFunctionRequest.builder()
-          .functionName(functionName)
-          .build();
+      DeleteFunctionRequest deleteRequest =
+          DeleteFunctionRequest.builder().functionName(functionName).build();
       lambdaClient.deleteFunction(deleteRequest);
       LOGGER.info("Successfully deleted lambda function: {}", functionName);
     } catch (ResourceNotFoundException e) {

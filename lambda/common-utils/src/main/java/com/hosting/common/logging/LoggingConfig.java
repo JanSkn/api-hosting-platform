@@ -8,6 +8,7 @@ public final class LoggingConfig {
   public static final String CORRELATION_ID_MDC_KEY = "correlationId";
   public static final String AWS_REQUEST_ID_MDC_KEY = "awsRequestId";
   public static final String DEPLOYMENT_ID_MDC_KEY = "deploymentId";
+  public static final String IMAGE_TAG_MDC_KEY = "imageTag";
 
   public static final String SQS_MESSAGE_ID_MDC_KEY = "sqsMessageId";
 

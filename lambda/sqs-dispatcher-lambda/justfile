@@ -9,8 +9,5 @@ format:
 code-analysis:
     ../mvnw {{ mvn_flags }} pmd:check pmd:cpd-check
 
-build:
-    ../mvnw {{ mvn_flags }} clean package -DskipTests
-
 unit-test:
     ../mvnw {{ mvn_flags }} test

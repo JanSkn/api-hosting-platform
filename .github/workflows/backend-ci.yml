@@ -17,8 +17,8 @@ jobs:
       - uses: ./.github/actions/setup-java-maven
       - uses: ./.github/actions/setup-just
 
-      - name: Local install of shared modules
-        run: just lambda install
+      - name: Create Build Artifact
+        run: just lambda install ${{ inputs.module-name }}
 
       - name: Static Code Analysis
         run: |
@@ -28,14 +28,11 @@ jobs:
       - name: Run Unit Tests
         run: just ${{ inputs.module-name }} unit-test
 
-      - name: Create Build Artifact
-        run: just ${{ inputs.module-name }} build
-
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: apiforge-${{ inputs.module-name }}-jar
-          path: ${{ inputs.module-name }}/target/*.jar
+          name: apiforge-${{ inputs.module-name }}-artifact
+          path: ${{ inputs.module-name }}/target/function.zip # for lambda packaging, must match name in template.yml
           retention-days: 1
 
       - name: Upload Test Results

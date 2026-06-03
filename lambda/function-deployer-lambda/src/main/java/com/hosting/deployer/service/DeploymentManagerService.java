@@ -1,8 +1,8 @@
 package com.hosting.deployer.service;
 
 import com.hosting.common.aws.DeploymentService;
-import com.hosting.common.config.EcrConfig;
 import com.hosting.common.aws.repositories.LambdaDeploymentRepository;
+import com.hosting.common.config.EcrConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,12 +21,11 @@ public class DeploymentManagerService {
   public void deploy(String userId, String deploymentId, String imageTag, String accountId) {
     LOGGER.info("Starting API deployment");
 
-    String functionName = "app-" + deploymentId; // if the format changes, change in DeploymentService.deleteDeployment() as well
     String repositoryUri = EcrConfig.REPOSITORY_URI;
     String imageUri = repositoryUri + ":" + imageTag;
 
-    lambdaRepository.createFunction(functionName, imageUri, accountId);
-    String functionUrl = lambdaRepository.setupFunctionUrl(functionName);
+    lambdaRepository.createFunction(deploymentId, imageUri, accountId);
+    String functionUrl = lambdaRepository.setupFunctionUrl(deploymentId);
 
     deploymentService.setApiUri(userId, deploymentId, functionUrl);
 

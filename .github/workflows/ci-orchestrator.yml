@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       frontend-changed: ${{ steps.filter.outputs.frontend }}
+      global-changed: ${{ steps.filter.outputs.global }}
       sqs-dispatcher-changed: ${{ steps.filter.outputs.sqs-dispatcher }}
       function-deployer-changed: ${{ steps.filter.outputs.function-deployer }}
       common-utils-changed: ${{ steps.filter.outputs.common-utils }}
