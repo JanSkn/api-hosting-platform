@@ -8,7 +8,7 @@ import jakarta.ws.rs.core.Response.Status;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public abstract class BaseResource {
+public class BaseResource {
 
   protected Response createResponse(Status status, Object entity) {
     return Response.status(status).entity(entity).build();

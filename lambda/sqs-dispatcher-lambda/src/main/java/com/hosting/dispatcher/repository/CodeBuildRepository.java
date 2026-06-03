@@ -75,7 +75,7 @@ public class CodeBuildRepository {
             .type("PLAINTEXT")
             .build());
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       // tell the build container how to reach LocalStack
       envVars.add(
           EnvironmentVariable.builder()
@@ -100,7 +100,7 @@ public class CodeBuildRepository {
     LoggingConfig.put("buildId", buildId);
     LOGGER.info("Started CodeBuild job");
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       LOGGER.info("[LOCAL] Enter waitForBuildCompletion ...", buildId);
       waitForBuildCompletion(buildId);
 
@@ -173,43 +173,48 @@ public class CodeBuildRepository {
   }
 
   private void publishCodeBuildSuccessEvent(
-      String projectName, String buildId, String userId, String deploymentId, String imageTag, String correlationId) {
+      String projectName,
+      String buildId,
+      String userId,
+      String deploymentId,
+      String imageTag,
+      String correlationId) {
 
-    String detail = String.format(
-      "{"
-          + "\"build-status\": \"SUCCEEDED\","
-          + "\"project-name\": \"%s\","
-          + "\"build-id\": \"%s\","
-          + "\"additional-information\": {"
-          + "  \"environment\": {"
-          + "    \"environment-variables\": ["
-          + "      {\"name\": \"USER_ID\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
-          + "      {\"name\": \"DEPLOYMENT_ID\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
-          + "      {\"name\": \"CORRELATION_ID\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
-          + "      {\"name\": \"IMAGE_TAG\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
-          + "      {\"name\": \"ENV\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"}"
-          + "    ]"
-          + "  }"
-          + "}"
-          + "}",
-      projectName, 
-      buildId, 
-      userId, 
-      deploymentId, 
-      correlationId, 
-      imageTag, 
-      GlobalConfig.ENVIRONMENT
-  );
+    String detail =
+        String.format(
+            "{"
+                + "\"build-status\": \"SUCCEEDED\","
+                + "\"project-name\": \"%s\","
+                + "\"build-id\": \"%s\","
+                + "\"additional-information\": {"
+                + "  \"environment\": {"
+                + "    \"environment-variables\": ["
+                + "      {\"name\": \"USER_ID\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
+                + "      {\"name\": \"DEPLOYMENT_ID\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
+                + "      {\"name\": \"CORRELATION_ID\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
+                + "      {\"name\": \"IMAGE_TAG\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"},"
+                + "      {\"name\": \"ENV\", \"value\": \"%s\", \"type\": \"PLAINTEXT\"}"
+                + "    ]"
+                + "  }"
+                + "}"
+                + "}",
+            projectName,
+            buildId,
+            userId,
+            deploymentId,
+            correlationId,
+            imageTag,
+            GlobalConfig.ENVIRONMENT);
 
-  PutEventsRequestEntry entry =
-      PutEventsRequestEntry.builder()
-          .source("aws.codebuild")
-          .detailType("CodeBuild Build State Change")
-          .detail(detail)
-          .eventBusName("default")
-          .build();
+    PutEventsRequestEntry entry =
+        PutEventsRequestEntry.builder()
+            .source("aws.codebuild")
+            .detailType("CodeBuild Build State Change")
+            .detail(detail)
+            .eventBusName("default")
+            .build();
 
-  eventBridgeClient.putEvents(PutEventsRequest.builder().entries(entry).build());
+    eventBridgeClient.putEvents(PutEventsRequest.builder().entries(entry).build());
 
     LOGGER.info("[LOCAL] Published synthetic CodeBuild SUCCEEDED event to EventBridge");
   }
@@ -219,7 +224,7 @@ public class CodeBuildRepository {
   // In production this is not needed as we rely on the event to trigger the deployment and not on
   // the build method to synchronously call the deploy method after the build.
   private void waitForBuildCompletion(String buildId) {
-    if (!GlobalConfig.isLocal()) {
+    if (!GlobalConfig.isLocalStack()) {
       throw new IllegalStateException(
           "waitForBuildCompletion is ONLY allowed in local environment. "
               + "This method must not be used in production.");

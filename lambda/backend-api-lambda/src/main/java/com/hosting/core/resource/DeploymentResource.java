@@ -6,7 +6,6 @@ import com.hosting.common.dto.CreateDeploymentResponse;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import com.hosting.common.logging.LoggingConfig;
-import io.quarkus.logging.Log;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
@@ -17,11 +16,14 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("deployments")
 @RequestScoped // token context per request
 public class DeploymentResource extends BaseResource {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeploymentResource.class);
   @Inject ClaimsContext claims;
   @Inject DeploymentService deploymentService;
 
@@ -59,7 +61,7 @@ public class DeploymentResource extends BaseResource {
   @POST
   @Path("/initialize")
   public Response initializeDeployment(CreateDeploymentRequest request) {
-    Log.info("Initializing new deployment");
+    LOGGER.info("Initializing new deployment");
 
     String deploymentId = deploymentService.initializeDeployment(claims.getUserId(), request);
     CreateDeploymentResponse response = new CreateDeploymentResponse(deploymentId);
@@ -71,7 +73,7 @@ public class DeploymentResource extends BaseResource {
   @Path("/upload-url")
   public Response generateS3CodeUploadUrl(@QueryParam("deploymentId") String deploymentId) {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
-    Log.info("Generating S3 upload URL");
+    LOGGER.info("Generating S3 upload URL");
 
     UploadUrlResponse response =
         deploymentService.generateUploadUrl(claims.getUserId(), deploymentId);
@@ -84,7 +86,7 @@ public class DeploymentResource extends BaseResource {
   public Response setDeploymentStatus(
       @PathParam("deploymentId") String deploymentId, @QueryParam("status") Status status) {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
-    Log.infof("Updating status to %s", status);
+    LOGGER.info("Updating status to {}", status);
 
     deploymentService.setDeploymentStatus(claims.getUserId(), deploymentId, status);
 
@@ -95,7 +97,7 @@ public class DeploymentResource extends BaseResource {
   @Path("/{deploymentId}/trigger")
   public Response triggerDeployment(@PathParam("deploymentId") String deploymentId) {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
-    Log.info("Triggering build");
+    LOGGER.info("Triggering build");
 
     deploymentService.triggerDeployment(claims.getUserId(), deploymentId);
 
@@ -106,7 +108,7 @@ public class DeploymentResource extends BaseResource {
   @Path("/{deploymentId}")
   public Response deleteDeployment(@PathParam("deploymentId") String deploymentId) {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
-    Log.info("Deleting deployment");
+    LOGGER.info("Deleting deployment");
 
     deploymentService.deleteDeployment(claims.getUserId(), deploymentId);
 

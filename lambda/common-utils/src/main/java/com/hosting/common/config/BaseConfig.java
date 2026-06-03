@@ -4,7 +4,7 @@ package com.hosting.common.config;
  * Base class for configuration classes. Provides a protected method to fetch environment variables
  * with mandatory presence checks.
  */
-public abstract class BaseConfig {
+public class BaseConfig {
 
   protected BaseConfig() {
     // Should not be directly instantiated

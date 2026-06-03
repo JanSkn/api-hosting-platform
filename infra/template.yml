@@ -6,6 +6,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: Backend and Frontend setup for APIForge. 
 
 # TODO also logging policies for the lambda policies
+# TODO policies for backend api for delete lambdas
 
 Globals:
   Function:
@@ -20,14 +21,15 @@ Globals:
 Parameters:
   Environment:
     Type: String
-    AllowedValues: [local, stg, prod]
+    AllowedValues: [local, testing,stg, prod]
   AwsRegion:
     Type: String
   LambdaMemory:
     Type: Number
+  # those should not be set manually by the samconfig.toml but use the default value
   MaxDeploymentsPerUser:
     Type: Number
-  # those should not be set manually by the samconfig.toml but use the default value
+    Default: 5
   DeploymentsMetadataTableName:
     Type: String
     Default: "deployments-metadata"
@@ -99,10 +101,12 @@ Resources:
       Environment:
         Variables:
           # for CORS header in lambda responses, set by Quarkus in application.properties
+          LAMBDA_ENVIRONMENT: "BACKEND_API_LAMBDA"
           ALLOWED_ORIGIN: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
           COGNITO_USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
           DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
           MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser 
+          ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
           BUILD_QUEUE_URL: !Ref BuildJobQueue 
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
@@ -204,6 +208,7 @@ Resources:
             BatchSize: 1 # one deployment per instance
       Environment:
         Variables:
+          LAMBDA_ENVIRONMENT: "SQS_DISPATCHER_LAMBDA"
           CODEBUILD_PROJECT_NAME: !Ref CodeBuild
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
@@ -345,6 +350,7 @@ Resources:
                   - !Ref CodeBuild
       Environment:
         Variables:
+            LAMBDA_ENVIRONMENT: "FUNCTION_DEPLOYER_LAMBDA"
             ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
             DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
       #Policies:

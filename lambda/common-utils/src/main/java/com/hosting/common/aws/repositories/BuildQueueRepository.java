@@ -6,15 +6,17 @@ import com.hosting.common.aws.sqs.models.BuildMessage;
 import com.hosting.common.config.SqsConfig;
 import com.hosting.common.exceptions.SQSBuildJobNotEnqueuedException;
 import com.hosting.common.logging.LoggingConfig;
-import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 @ApplicationScoped
 public class BuildQueueRepository {
+  private static final Logger LOGGER = LoggerFactory.getLogger(BuildQueueRepository.class);
   private SqsClient sqsClient;
   private ObjectMapper objectMapper;
 
@@ -45,12 +47,11 @@ public class BuildQueueRepository {
               .messageGroupId(deployment.getUserId())
               .messageDeduplicationId(deployment.getDeploymentId());
 
-      Log.info("Enqueuing build job to SQS");
-      Log.debugf("SQS message body: %s", jsonMessage);
+      LOGGER.info("Enqueuing build job to SQS");
 
       sqsClient.sendMessage(builder.build());
     } catch (Exception e) {
-      Log.error("Failed to enqueue build job in SQS", e);
+      LOGGER.error("Failed to enqueue build job in SQS", e);
       throw new SQSBuildJobNotEnqueuedException("Failed to enqueue build job in SQS", e);
     }
   }

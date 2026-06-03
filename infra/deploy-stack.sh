@@ -3,13 +3,13 @@
 set -euo pipefail
 
 ENV=${1:-}
-ALLOWED_ENVS="local stg prod"
+ALLOWED_ENVS="local testing stg prod"
 
 AWS_REGION=$(grep -A 15 "\[${ENV}.deploy.parameters\]" samconfig.toml | grep "region =" | head -n 1 | cut -d'"' -f2 | xargs)
 STACK_NAME=$(grep -A 15 "\[${ENV}.deploy.parameters\]" samconfig.toml | grep "stack_name =" | head -n 1 | cut -d'"' -f2 | xargs)
 
 if [[ -z "$ENV" ]]; then
-  echo "❌  ./deploy-stack.sh [local|stg|prod]"
+  echo "❌  ./deploy-stack.sh [local|testing|stg|prod]"
   exit 1
 fi
 
@@ -24,7 +24,7 @@ if [[ "$ENV" != "local" && "${GITHUB_ACTIONS:-}" != "true" ]]; then
   exit 1
 fi
 
-if [ "$ENV" == "local" ]; then
+if [[ "$ENV" == "local" || "$ENV" == "testing" ]]; then
   SAM_CMD="samlocal"
   AWS_CMD="awslocal"
 else

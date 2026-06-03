@@ -1,16 +1,21 @@
-package com.hosting.deployer.repository;
+package com.hosting.common.aws.repositories;
 
 import com.hosting.common.config.UserLambdaConfig;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
 
+// TODO move ids into mdc
+@ApplicationScoped
 public class LambdaDeploymentRepository {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LambdaDeploymentRepository.class);
   private final LambdaClient lambdaClient;
 
+  @Inject
   public LambdaDeploymentRepository(LambdaClient lambdaClient) {
     this.lambdaClient = lambdaClient;
   }
@@ -62,6 +67,20 @@ public class LambdaDeploymentRepository {
     } catch (Exception e) {
       LOGGER.error("Error setting up Function URL for: {}", functionName, e);
       throw new RuntimeException("Error setting up Function URL", e);
+    }
+  }
+
+  public void deleteFunction(String functionName) {
+    try {
+      DeleteFunctionRequest deleteRequest = DeleteFunctionRequest.builder()
+          .functionName(functionName)
+          .build();
+      lambdaClient.deleteFunction(deleteRequest);
+      LOGGER.info("Successfully deleted lambda function: {}", functionName);
+    } catch (ResourceNotFoundException e) {
+      LOGGER.warn("Lambda function {} not found, skipping function deletion", functionName);
+    } catch (Exception e) {
+      LOGGER.error("Failed to delete lambda function: {}", functionName, e);
     }
   }
 }

@@ -2,11 +2,11 @@
 
 set -euo pipefail
 
-ENVIRONMENT="${1:?Environment required (local|stg|prod)}"
+ENVIRONMENT="${1:?Environment required (local|testing|stg|prod)}"
 AWS_REGION="${2:?Region required}"
 STACK_NAME="${3:?Stack Name required}"
 
-if [[ "$ENVIRONMENT" == "local" ]]; then
+if [[ "$ENVIRONMENT" == "local" || "$ENVIRONMENT" == "testing" ]]; then
   AWS_CMD="awslocal"
 else
   AWS_CMD="aws"
@@ -51,9 +51,9 @@ if [[ "$ENVIRONMENT" == "local" ]]; then
   echo "✅ Writing config.js locally to $LOCAL_CONFIG_JS_FILE"
   cp "$TEMP_CONFIG" "$LOCAL_CONFIG_JS_FILE"
 else
-  if ! aws s3 ls "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION" >/dev/null 2>&1; then
+  if ! $AWS_CMD s3 ls "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION" >/dev/null 2>&1; then
     echo "Uploading to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."
-    aws s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION"
+    $AWS_CMD s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION"
     echo "✅ Uploaded to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE"
   else
     echo "✅ File already exists in s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE, skipping upload"

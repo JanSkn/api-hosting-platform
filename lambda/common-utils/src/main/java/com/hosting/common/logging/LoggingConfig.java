@@ -21,7 +21,6 @@ public final class LoggingConfig {
     MDC.put(key, value);
   }
 
-  @SuppressWarnings("PMD.LooseCoupling")
   public static void putAll(Map<String, String> contextMap) {
     if (contextMap != null) {
       contextMap.forEach(MDC::put);

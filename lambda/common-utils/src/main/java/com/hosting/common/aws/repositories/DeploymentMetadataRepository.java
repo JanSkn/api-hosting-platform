@@ -19,6 +19,11 @@ public class DeploymentMetadataRepository extends AbstractDynamoRepository<Deplo
     super(dynamoDbClient, TABLE_NAME, Deployment.class);
   }
 
+  @Override
+  protected String getTableName() {
+    return TABLE_NAME;
+  }
+
   // put would overwrite item, but we want to enforce max deployments per user
   // limit, so we need to
   // check before put

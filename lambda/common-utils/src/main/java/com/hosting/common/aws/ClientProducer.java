@@ -22,6 +22,8 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
+import software.amazon.awssdk.services.ecr.EcrClient;
+import software.amazon.awssdk.services.ecr.EcrClientBuilder;
 
 /**
  * Producer class that provides configured AWS SDK clients as injectable CDI beans. This allows
@@ -40,7 +42,7 @@ public class ClientProducer {
 
     S3ClientBuilder builder = S3Client.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(
@@ -61,7 +63,7 @@ public class ClientProducer {
   public S3Presigner s3Presigner() {
     S3Presigner.Builder builder = S3Presigner.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       S3Configuration s3Configuration =
           S3Configuration.builder().pathStyleAccessEnabled(true).build();
 
@@ -84,7 +86,7 @@ public class ClientProducer {
   public DynamoDbEnhancedClient dynamoDbClient() {
     DynamoDbClientBuilder builder = DynamoDbClient.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(
@@ -104,7 +106,7 @@ public class ClientProducer {
   public SqsClient sqsClient() {
     SqsClientBuilder builder = SqsClient.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(
@@ -121,7 +123,7 @@ public class ClientProducer {
   public CodeBuildClient codeBuildClient() { // not used by quarkus, so no annotations
     CodeBuildClientBuilder builder = CodeBuildClient.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(
@@ -139,7 +141,7 @@ public class ClientProducer {
 
     EventBridgeClientBuilder builder = EventBridgeClient.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(
@@ -159,7 +161,7 @@ public class ClientProducer {
     CognitoIdentityProviderClientBuilder builder =
         CognitoIdentityProviderClient.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(
@@ -170,13 +172,34 @@ public class ClientProducer {
   }
 
   /**
-   * Returns a LambdaClient. It automatically configures the region and local endpoint overrides if
-   * running in a local environment.
+   * Produces an application-scoped LambdaClient. It automatically configures the region and local
+   * endpoint overrides if running in a local environment.
    */
-  public LambdaClient lambdaClient() { // not used by quarkus, so no annotations
+  @Produces
+  @ApplicationScoped
+  public LambdaClient lambdaClient() {
     LambdaClientBuilder builder = LambdaClient.builder().region(GlobalConfig.AWS_REGION);
 
-    if (GlobalConfig.isLocal()) {
+    if (GlobalConfig.isLocalStack()) {
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Produces an application-scoped EcrClient. It automatically configures the region and local
+   * endpoint overrides if running in a local environment.
+   */
+  @Produces
+  @ApplicationScoped
+  public EcrClient ecrClient() {
+    EcrClientBuilder builder = EcrClient.builder().region(GlobalConfig.AWS_REGION);
+
+    if (GlobalConfig.isLocalStack()) {
       builder
           .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
           .credentialsProvider(

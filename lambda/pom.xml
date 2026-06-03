@@ -136,12 +136,12 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-pmd-plugin</artifactId>
-        <version>3.26.0</version>
+        <version>3.28.0</version>
         <configuration>
           <failOnViolation>true</failOnViolation>
           <printFailingErrors>true</printFailingErrors>
           <rulesets>
-            <ruleset>/rulesets/java/quickstart.xml</ruleset>
+            <ruleset>${project.parent.basedir}/config/pmd/ruleset.xml</ruleset>
           </rulesets>
         </configuration>
       </plugin>

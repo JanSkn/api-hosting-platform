@@ -12,21 +12,12 @@
   <artifactId>sqs-dispatcher-lambda</artifactId>
   <packaging>jar</packaging>
 
+  <!-- leaving logging dependencies here instead of common-utils as there would be a conflict with backend-api-logging module -->
   <dependencies>
     <dependency>
       <groupId>com.hosting</groupId>
       <artifactId>common-utils</artifactId>
       <version>${project.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>io.quarkus</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jboss.logmanager</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.amazonaws</groupId>

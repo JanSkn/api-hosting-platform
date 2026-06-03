@@ -7,6 +7,8 @@ public final class GlobalConfig extends BaseConfig {
 
   public static final String ENVIRONMENT = getOrThrow("ENV");
   public static final Region AWS_REGION = Region.of(getOrThrow("AWS_REGION"));
+  public static final LambdaEnvType LAMBDA_ENVIRONMENT =
+      LambdaEnvType.valueOf(getOrThrow("LAMBDA_ENVIRONMENT"));
 
   /**
    * INTERNAL LOCAL ENDPOINT: Used by the Lambda function code to talk to LocalStack services.
@@ -23,7 +25,11 @@ public final class GlobalConfig extends BaseConfig {
   /** The container name of LocalStack as defined in docker-compose.yml */
   public static final String LOCALSTACK_CONTAINER_NAME = "localstack-main";
 
-  public static boolean isLocal() {
-    return "local".equalsIgnoreCase(ENVIRONMENT);
+  /**
+   * Utility method to check if the current environment is emulated using LocalStack (either 'local'
+   * or 'testing').
+   */
+  public static boolean isLocalStack() {
+    return "local".equalsIgnoreCase(ENVIRONMENT) || "testing".equalsIgnoreCase(ENVIRONMENT);
   }
 }

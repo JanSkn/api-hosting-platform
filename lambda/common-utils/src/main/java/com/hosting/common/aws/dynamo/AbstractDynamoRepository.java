@@ -20,6 +20,8 @@ public abstract class AbstractDynamoRepository<T> {
     // Required by CDI (Quarkus) for proxy generation
   }
 
+  protected abstract String getTableName();
+
   // We inject the DynamoDbEnhancedClient in the concrete subclass rather than here
   // because CDI (Quarkus) creates beans from concrete classes. Additionally, the concrete class
   // must provide specific arguments (TABLE_NAME and entity class) to the superclass constructor.

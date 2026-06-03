@@ -6,7 +6,7 @@ import com.hosting.common.aws.ClientProducer;
 import com.hosting.common.aws.DeploymentService;
 import com.hosting.common.aws.repositories.DeploymentMetadataRepository;
 import com.hosting.common.logging.LoggingConfig;
-import com.hosting.deployer.repository.LambdaDeploymentRepository;
+import com.hosting.common.aws.repositories.LambdaDeploymentRepository;
 import com.hosting.deployer.service.DeploymentManagerService;
 import java.util.List;
 import java.util.Map;

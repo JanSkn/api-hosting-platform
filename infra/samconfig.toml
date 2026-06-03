@@ -3,6 +3,7 @@ version = 0.1
 # single source of truth: stack name, region and env variables set here and read from
 # deployment scripts and Lambda Java code
 
+# localstack dev environment
 [local.deploy.parameters]
 stack_name = "apiforge-local"
 region = "eu-central-1"
@@ -11,26 +12,39 @@ capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
 parameter_overrides = [
     "Environment=local", 
     "AwsRegion=eu-central-1",
-    "LambdaMemory=128",
-    "MaxDeploymentsPerUser=15"
+    "LambdaMemory=128"
+]
+
+# localstack testing environment in CI
+[testing.deploy.parameters]
+stack_name = "apiforge-testing"
+region = "eu-central-1"
+resolve_s3 = true
+capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+parameter_overrides = [
+    "Environment=testing", 
+    "AwsRegion=eu-central-1",
+    "LambdaMemory=128"
 ]
 
 [staging.deploy.parameters]
 stack_name = "apiforge-stg"
 region = "eu-central-1"
+resolve_s3 = true
+capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
 parameter_overrides = [
     "Environment=stg", 
     "AwsRegion=eu-central-1", 
-    "LambdaMemory=256",
-    "MaxDeploymentsPerUser=5"
+    "LambdaMemory=256"
 ]
 
 [prod.deploy.parameters]
 stack_name = "apiforge-prod"
 region = "eu-central-1"
+resolve_s3 = true
+capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
 parameter_overrides = [
     "Environment=prod", 
     "AwsRegion=eu-central-1", 
-    "LambdaMemory=512",
-    "MaxDeploymentsPerUser=5"
+    "LambdaMemory=512"
 ]

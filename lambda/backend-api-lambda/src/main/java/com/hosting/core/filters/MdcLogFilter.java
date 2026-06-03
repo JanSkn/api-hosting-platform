@@ -2,7 +2,6 @@ package com.hosting.core.filters;
 
 import com.hosting.common.logging.LoggingConfig;
 import com.hosting.core.resource.ClaimsContext;
-import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -43,8 +42,6 @@ public class MdcLogFilter implements ContainerRequestFilter, ContainerResponseFi
         LoggingConfig.CORRELATION_ID_MDC_KEY, correlationId,
         LoggingConfig.USER_ID_MDC_KEY, claims.getUserId(),
         LoggingConfig.AWS_REQUEST_ID_MDC_KEY, claims.getRequestId());
-
-    Log.debug("MDC context initialized");
   }
 
   @Override
