@@ -32,7 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apiforge-${{ inputs.module-name }}-artifact
-          path: ${{ inputs.module-name }}/target/function.zip # for lambda packaging, must match name in template.yml
+          path: lambda/${{ inputs.module-name }}/target/function.zip # for lambda packaging, must match name in template.yml
           retention-days: 1
 
       - name: Upload Test Results
@@ -40,10 +40,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ inputs.module-name }}
-          path: ${{ inputs.module-name }}/target/surefire-reports/
+          path: lambda/${{ inputs.module-name }}/target/surefire-reports/
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ inputs.module-name }}
-          path: ${{ inputs.module-name }}/target/site/jacoco/
+          path: lambda/${{ inputs.module-name }}/target/site/jacoco/
