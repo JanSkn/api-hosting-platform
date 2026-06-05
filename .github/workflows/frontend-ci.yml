@@ -44,21 +44,3 @@ jobs:
 
       - name: Unit Tests
         run: just ${{ inputs.module-name }} test-unit
-
-      # we don't upload to the web bucket directly but to the staging artifacts bucket for the following reasons:
-      # 1) we would otherwise skip stg and prod
-      # 2) we want to be able to rollback to a previous version in prod
-      - name:  Upload Build Artifact to S3
-        run: |
-          AWS_STG_ACCOUNT_ID=071308038858
-          MODULE="${{ inputs.module-name }}"
-          SHA="${{ github.sha }}"
-          S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
-          
-          echo "Zipping content of dist/..."
-          cd "$MODULE/dist"
-          zip -r ../../frontend-build.zip .
-          cd ../..
-          
-          echo "Uploading Frontend to S3..."
-          aws s3 cp frontend-build.zip "$S3_BUCKET/$MODULE/$SHA/frontend.zip"

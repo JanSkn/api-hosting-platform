@@ -1,8 +1,8 @@
 name: CI Orchestrator
 
-# NOTE: S3 artifact uploads are wired in this CI/CD, if anything is changed in one workflow yaml, check the other workflow yamls as well
+# Keep the change-detection filters here in sync with publish-main.yml.
 
-on:    
+on:
   pull_request:
     branches: [main]
 

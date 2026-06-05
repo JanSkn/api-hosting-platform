@@ -7,6 +7,11 @@ on:
         description: 'Leave empty for standard deployment or specify commit SHA of historical manifest for rollback deployment'
         required: false
 
+# Never run two production deployments at once, and never cancel one in flight.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
 jobs:
   deploy-prod:
     name: Deploy to Production
@@ -73,7 +78,12 @@ jobs:
 
           for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
             MODULE_SHA=$(jq -r ".modules.\"$MODULE\"" ./manifest.json)
-            
+
+            if [ -z "$MODULE_SHA" ] || [ "$MODULE_SHA" = "null" ]; then
+              echo "❌ ERROR: No artifact version for $MODULE in manifest (never built?). Aborting."
+              exit 1
+            fi
+
             echo "Downloading $MODULE with version $MODULE_SHA from STG S3..."
             mkdir -p lambda/$MODULE/target
             
@@ -91,7 +101,12 @@ jobs:
           STG_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
           PROD_WEB_BUCKET="apiforge-frontend-artifacts-$AWS_PRD_ACCOUNT_ID"
           SHA=$(jq -r ".modules.\"$FRONTEND_MODULE\"" ./manifest.json)
-                      
+
+          if [ -z "$SHA" ] || [ "$SHA" = "null" ]; then
+            echo "❌ ERROR: No artifact version for $FRONTEND_MODULE in manifest (never built?). Aborting."
+            exit 1
+          fi
+
           aws s3 cp "$STG_BUCKET/$FRONTEND_MODULE/$SHA/frontend.zip" ./frontend-local.zip
 
           echo "Unzipping frontend package..."

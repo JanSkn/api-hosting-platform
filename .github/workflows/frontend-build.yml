@@ -1,0 +1,57 @@
+name: Frontend Build and Publish
+
+# We only build from the canonical main state and upload an immutable,
+# SHA-versioned artifact under the main commit SHA.
+#
+# We upload to the staging artifacts bucket (not the web bucket directly) so that
+# 1) we do not skip the stg -> prod promotion flow, and
+# 2) we can roll back to a previous version in prod.
+on:
+  workflow_call:
+    inputs:
+      module-name:
+        required: true
+        type: string
+
+jobs:
+  build-and-publish:
+    name: Build & Publish – ${{ inputs.module-name }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-just
+      - uses: ./.github/actions/setup-node
+        with:
+          module-name: ${{ inputs.module-name }}
+
+      - name: Configure AWS Staging Credentials (OIDC) for Code Artifacts
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      - name: Install dependencies
+        run: just ${{ inputs.module-name }} install
+
+      - name: Build
+        run: just ${{ inputs.module-name }} build
+
+      - name: Upload Build Artifact to S3
+        run: |
+          AWS_STG_ACCOUNT_ID=071308038858
+          MODULE="${{ inputs.module-name }}"
+          SHA="${{ github.sha }}"
+          S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+
+          echo "Zipping content of dist/..."
+          cd "$MODULE/dist"
+          zip -r ../../frontend-build.zip .
+          cd ../..
+
+          echo "Uploading Frontend to S3..."
+          aws s3 cp frontend-build.zip "$S3_BUCKET/$MODULE/$SHA/frontend.zip"

@@ -30,7 +30,7 @@ parameter_overrides = [
     "LambdaMemory=128"
 ]
 
-[staging.deploy.parameters]
+[stg.deploy.parameters]
 stack_name = "apiforge-stg"
 region = "eu-central-1"
 resolve_s3 = true

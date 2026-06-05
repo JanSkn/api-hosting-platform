@@ -7,7 +7,6 @@ on:
         required: true
         type: string
 
-# TODO: github.sha is the commit sha, differnt sha when mergin to main --> deploy yamls wont find the artifact
 jobs:
   ci-checks:
     name: CI Checks – ${{ inputs.module-name }}
@@ -60,30 +59,3 @@ jobs:
         with:
           name: coverage-${{ inputs.module-name }}
           path: lambda/${{ inputs.module-name }}/target/site/jacoco/
-
-      - name: Configure AWS Staging Credentials (OIDC) for Code Artifacts
-        if: inputs.module-name != 'common-utils'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
-          aws-region: eu-central-1
-
-      # For every changed sub module:
-        # Upload immutable artifact versioned by commit SHA.
-        # This allows deploying a specific known-good version to prod
-        # even after GitHub Actions artifact retention has expired because we do manual deployments after stg. 
-      # The manifest.json will be created in update-manifest.yml after the main CI workflow has completed successfully, so we can be sure that only tested artifacts are included in the manifest.
-      # The manifest groups the commits together in case a module was not updated.
-      # - name: Upload Build Artifact to S3
-      #   # common-utils is not a lambda and not needed for deployment, only for compilation of other modules, so we can skip uploading it
-      #   if: inputs.module-name != 'common-utils'
-      #   run: |
-      #     AWS_STG_ACCOUNT_ID=071308038858
-      #     MODULE="${{ inputs.module-name }}"
-      #     SHA="${{ github.sha }}"
-      #     LOCAL_ZIP="lambda/$MODULE/target/function.zip"
-      #     S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
-      #     MANIFEST_FILE="manifest.json"
-
-      #     echo "Uploading immutable artifact to S3 ($SHA)..."
-      #     aws s3 cp "$LOCAL_ZIP" "$S3_BUCKET/$MODULE/$SHA/function.zip"

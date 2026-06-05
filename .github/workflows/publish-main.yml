@@ -1,0 +1,193 @@
+name: Publish Main Artifacts
+
+# NOTE: S3 artifact uploads are wired in this CI/CD, if anything is changed in one workflow yaml, check the other workflow yamls as well
+#
+# Runs on push to main (after CI checks passed). It builds every changed module from the
+# canonical main state, uploads immutable artifacts keyed by the main commit
+# SHA, and then writes the manifest. Because build+upload and the manifest run
+# in the SAME workflow under the SAME github.sha (the main commit), the manifest
+# always finds the freshly uploaded artifacts.
+#
+# Deploy to staging is chained off this workflow via workflow_run (deploy-stg.yml).
+
+on:
+  push:
+    branches: [main]
+    # Only run when something deployable actually changed. A docs-only push to
+    # main would otherwise skip all build jobs but still re-run the manifest and
+    # trigger a no-op staging redeploy. Keep this in sync with the union of the
+    # detect-code-changes filters below.
+    paths:
+      - 'infra/**'
+      - 'justfile'
+      - 'lambda/**'
+      - 'web/**'
+      - '.github/workflows/**'
+  # Manual escape hatch: builds and uploads ALL modules regardless of detected
+  # changes. Use this to seed a fresh artifact bucket on the first deployment, or
+  # to recover a complete manifest after artifacts/manifest were lost.
+  # NOTE: this would also trigger deploy-stg.yml afterwards.
+  workflow_dispatch:
+
+# Serialize main publishes so two rapid merges can't interleave their
+# read-modify-write on manifests/latest (last-writer-wins would drop a module
+# update). Queue instead of cancel so no manifest update is lost.
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
+jobs:
+  # Keep the change-detection filters here in sync with ci-orchestrator.yml.
+  detect-code-changes:
+    name: Detect Code Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend-changed: ${{ steps.filter.outputs.frontend }}
+      core-infra-changed: ${{ steps.filter.outputs.core-infra }}
+      sqs-dispatcher-changed: ${{ steps.filter.outputs.sqs-dispatcher }}
+      function-deployer-changed: ${{ steps.filter.outputs.function-deployer }}
+      common-utils-changed: ${{ steps.filter.outputs.common-utils }}
+      backend-api-changed: ${{ steps.filter.outputs.backend-api }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core-infra:
+              - 'infra/**'
+              - 'justfile'
+              - 'lambda/pom.xml'
+              - '.github/workflows/**'
+            frontend:
+              - 'web/**'
+            common-utils:
+              - 'lambda/common-utils/**'
+            sqs-dispatcher:
+              - 'lambda/sqs-dispatcher-lambda/**'
+            backend-api:
+              - 'lambda/backend-api-lambda/**'
+            function-deployer:
+              - 'lambda/function-deployer-lambda/**'
+
+  build-sqs-dispatcher:
+    needs: detect-code-changes
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-code-changes.outputs.sqs-dispatcher-changed == 'true' ||
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+    uses: ./.github/workflows/backend-build.yml
+    with:
+      module-name: sqs-dispatcher-lambda
+
+  build-function-deployer:
+    needs: detect-code-changes
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-code-changes.outputs.function-deployer-changed == 'true' ||
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+    uses: ./.github/workflows/backend-build.yml
+    with:
+      module-name: function-deployer-lambda
+
+  build-backend-api:
+    needs: detect-code-changes
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-code-changes.outputs.backend-api-changed == 'true' ||
+      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+    uses: ./.github/workflows/backend-build.yml
+    with:
+      module-name: backend-api-lambda
+
+  build-frontend:
+    needs: detect-code-changes
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-code-changes.outputs.frontend-changed == 'true' ||
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+    uses: ./.github/workflows/frontend-build.yml
+    with:
+      module-name: web
+
+  # We create a manifest JSON to keep track of which SHAs correspond to which module builds for easier lookup.
+  # Manifest structure:
+  # {
+  #   "main_sha": "7a9f2c3d5e1b6f8a9c0d2e4f6a8b0c1d2e3f4a5b",
+  #   "modules": {
+  #     "backend-api-lambda": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+  #     "sqs-dispatcher-lambda": "7a9f2c3d5e1b6f8a9c0d2e4f6a8b0c1d2e3f4a5b",
+  #     "function-deployer-lambda": "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e"
+  #   }
+  # }
+  update-manifest:
+    name: Update Artifact Manifest
+    needs:
+      - build-sqs-dispatcher
+      - build-function-deployer
+      - build-backend-api
+      - build-frontend
+    # Run as long as none of the build jobs failed. Skipped build jobs (module
+    # unchanged) count as "not failed", so the manifest still runs and keeps the
+    # old SHA for those modules. Only a real build failure blocks the manifest
+    # (and therefore the staging deploy).
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Staging Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      # for every new commit to main, we store a new manifest with the current state of which SHAs correspond to which module builds.
+      # This allows us to easily look up which commit corresponds to which artifact versions, and also allows us to do rollbacks
+      # by simply looking up the manifest of a previous commit and deploying those versions.
+      - name: Create manifest in Staging S3 Bucket
+        run: |
+          AWS_STG_ACCOUNT_ID=071308038858
+          SHA="${{ github.sha }}"
+          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          MANIFEST_FILE="manifest.json"
+
+          # get manifest or create new
+          if ! aws s3 cp "$BUCKET/manifests/latest/manifest.json" manifest.json 2>/dev/null; then
+            echo '{"main_sha":"","modules":{}}' > manifest.json
+          fi
+
+          # update main SHA
+          jq --arg sha "$SHA" '.main_sha = $sha' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+
+          MODULES="web backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda"
+
+          for MODULE in $MODULES; do
+            if aws s3 ls "$BUCKET/$MODULE/$SHA/function.zip" >/dev/null 2>&1 || \
+               aws s3 ls "$BUCKET/$MODULE/$SHA/frontend.zip" >/dev/null 2>&1; then
+              echo "Found new artifact for $MODULE. Updating manifest to SHA: $SHA"
+
+              jq --arg sha "$SHA" --arg mod "$MODULE" \
+                '.modules[$mod] = $sha' manifest.json > manifest.tmp
+              mv manifest.tmp manifest.json
+            else
+              echo "No new artifact for $MODULE in this commit. Keeping old state."
+            fi
+          done
+
+          # upload as 'latest' (important for stg deployment)
+          echo "Uploading current manifest to manifests/latest/manifest.json"
+          aws s3 cp manifest.json "$BUCKET/manifests/latest/manifest.json"
+
+          # for rollbacks we also want to keep the old manifests, so we can easily look up which SHA corresponds to which version
+          echo "Saving immutable rollback snapshot to manifests/$SHA/manifest.json"
+          aws s3 cp manifest.json "$BUCKET/manifests/$SHA/manifest.json"

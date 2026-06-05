@@ -2,11 +2,18 @@ name: Staging Deployment
 
 on:
   workflow_run:
-    workflows: ["Update Artifact Manifest"] # must be the exact name of the workflow in update-manifest.yml
+    workflows: ["Publish Main Artifacts"] # must be the exact name of the workflow in publish-main.yml
     types:
       - completed
     branches:
       - main
+
+# Only ever deploy the newest staging state. If publishes pile up, supersede the
+# in-flight staging deploy with the latest (a CloudFormation stack can't update
+# concurrently anyway).
+concurrency:
+  group: deploy-stg
+  cancel-in-progress: true
 
 jobs:
   deploy-staging:
@@ -43,7 +50,12 @@ jobs:
 
           for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
             MODULE_SHA=$(jq -r ".modules.\"$MODULE\"" ./manifest.json)
-            
+
+            if [ -z "$MODULE_SHA" ] || [ "$MODULE_SHA" = "null" ]; then
+              echo "❌ ERROR: No artifact version for $MODULE in manifest (never built?). Aborting."
+              exit 1
+            fi
+
             echo "Downloading $MODULE with version $MODULE_SHA..."
             mkdir -p lambda/$MODULE/target
             
@@ -57,6 +69,12 @@ jobs:
           AWS_STG_ACCOUNT_ID=071308038858
           FRONTEND_MODULE="web"
           SHA=$(jq -r ".modules.\"$FRONTEND_MODULE\"" ./manifest.json)
+
+          if [ -z "$SHA" ] || [ "$SHA" = "null" ]; then
+            echo "❌ ERROR: No artifact version for $FRONTEND_MODULE in manifest (never built?). Aborting."
+            exit 1
+          fi
+
           ARTIFACT_S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
           TARGET_BUCKET="apiforge-frontend-artifacts-$AWS_STG_ACCOUNT_ID"
                       
