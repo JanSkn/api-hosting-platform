@@ -1,0 +1,74 @@
+name: Update Artifact Manifest
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # We create a manifest JSON to keep track of which SHAs correspond to which module builds for easier lookup.
+  # Manifest structure:
+  # {
+  #   "main_sha": "7a9f2c3d5e1b6f8a9c0d2e4f6a8b0c1d2e3f4a5b",
+  #   "modules": {
+  #     "backend-api-lambda": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+  #     "sqs-dispatcher-lambda": "7a9f2c3d5e1b6f8a9c0d2e4f6a8b0c1d2e3f4a5b",
+  #     "function-deployer-lambda": "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e"
+  #   }
+  # }
+  update-manifest:
+    name: Update Artifact Manifest
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Staging Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      # for every commit, we store a new manifest with the current state of which SHAs correspond to which module builds. 
+      # This allows us to easily look up which commit corresponds to which artifact versions, and also allows us to do rollbacks 
+      # by simply looking up the manifest of a previous commit and deploying those versions.
+      - name: Create manifest in Staging S3 Bucket
+        run: |
+          AWS_STG_ACCOUNT_ID=071308038858
+          SHA="${{ github.sha }}"
+          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          MANIFEST_FILE="manifest.json"
+
+          # get manifest or create new
+          if ! aws s3 cp "$BUCKET/manifests/latest/manifest.json" manifest.json 2>/dev/null; then
+            echo '{"main_sha":"","modules":{}}' > manifest.json
+          fi
+
+          # update main SHA
+          jq --arg sha "$SHA" '.main_sha = $sha' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+
+          MODULES="web backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda"
+
+          for MODULE in $MODULES; do
+            if aws s3 ls "$BUCKET/$MODULE/$SHA/function.zip" >/dev/null 2>&1; then
+              echo "Found new artifact for $MODULE. Updating manifest to SHA: $SHA"
+              
+              jq --arg sha "$SHA" --arg mod "$MODULE" \
+                '.modules[$mod] = $sha' manifest.json > manifest.tmp
+              mv manifest.tmp manifest.json
+            else
+              echo "No new artifact for $MODULE in this commit. Keeping old state."
+            fi
+          done
+
+          # upload as 'latest' (important for stg deployment)
+          echo "Uploading current manifest to manifests/latest/manifest.json"
+          aws s3 cp manifest.json "$BUCKET/manifests/latest/manifest.json"
+
+          # for rollbacks we also want to keep the old manifests, so we can easily look up which SHA corresponds to which version
+          echo "Saving immutable rollback snapshot to manifests/$SHA/manifest.json"
+          aws s3 cp manifest.json "$BUCKET/manifests/$SHA/manifest.json"

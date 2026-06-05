@@ -6,4 +6,4 @@ version = 0.1
 stack_name = "iam-stack"
 region = "eu-central-1"
 resolve_s3 = true # auto-created S3 bucket for the template
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+capabilities = ["CAPABILITY_NAMED_IAM"]

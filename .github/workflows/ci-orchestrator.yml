@@ -1,14 +1,18 @@
 name: CI Orchestrator
+
+# NOTE: S3 artifact uploads are wired in this CI/CD, if anything is changed in one workflow yaml, check the other workflow yamls as well
+
 on:    
   pull_request:
     branches: [main]
 
 jobs:
   detect-code-changes:
+    name: Detect Code Changes
     runs-on: ubuntu-latest
     outputs:
       frontend-changed: ${{ steps.filter.outputs.frontend }}
-      global-changed: ${{ steps.filter.outputs.global }}
+      core-infra-changed: ${{ steps.filter.outputs.core-infra }}
       sqs-dispatcher-changed: ${{ steps.filter.outputs.sqs-dispatcher }}
       function-deployer-changed: ${{ steps.filter.outputs.function-deployer }}
       common-utils-changed: ${{ steps.filter.outputs.common-utils }}
@@ -20,11 +24,11 @@ jobs:
         id: filter
         with:
           filters: |
-            global:
-              - '.github/workflows/**'
-              - '.github/actions/**'
-              - 'lambda/pom.xml'
+            core-infra:
+              - 'infra/**'
               - 'justfile'
+              - 'lambda/pom.xml'
+              - '.github/workflows/**'
             frontend:
               - 'web/**'
             common-utils:
@@ -40,7 +44,7 @@ jobs:
     needs: detect-code-changes
     if: |
       needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.global-changed == 'true'
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: common-utils
@@ -50,7 +54,7 @@ jobs:
     if: |
       needs.detect-code-changes.outputs.sqs-dispatcher-changed == 'true' ||
       needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.global-changed == 'true'
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: sqs-dispatcher-lambda
@@ -60,7 +64,7 @@ jobs:
     if: |
       needs.detect-code-changes.outputs.function-deployer-changed == 'true' ||
       needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.global-changed == 'true'
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: function-deployer-lambda
@@ -70,7 +74,7 @@ jobs:
     if: |
       needs.detect-code-changes.outputs.backend-api-changed == 'true' ||
       needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.global-changed == 'true'
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: backend-api-lambda
@@ -79,7 +83,7 @@ jobs:
     needs: detect-code-changes
     if: |
       needs.detect-code-changes.outputs.frontend-changed == 'true' ||
-      needs.detect-code-changes.outputs.global-changed == 'true'
+      needs.detect-code-changes.outputs.core-infra-changed == 'true'
     uses: ./.github/workflows/frontend-ci.yml
     with:
       module-name: web

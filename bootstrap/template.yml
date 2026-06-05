@@ -19,7 +19,7 @@ Resources:
   GitHubDeployRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: GitHubActionsDeploymentRole
+      RoleName: GitHubActionsDeploymentRole # name should match name in workflow yamls
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -30,31 +30,5 @@ Resources:
             Condition:
               StringLike:
                 "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubRepo}:*"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/PowerUserAccess
-
-  # not required to run the main stack, but used for checking logs etc. instead of personal account + role or root account
-  BootstrapAdminUser:
-    Type: "AWS::IAM::User"
-    Properties:
-      UserName: bootstrap-admin
-
-  BootstrapAdminRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      RoleName: BootstrapAdminRole
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: "sts:AssumeRole"
-            Condition:
-              # only allow assuming the role if the user is the bootstrap admin and MFA is present
-              ArnEquals:
-                "aws:PrincipalArn": !GetAtt BootstrapUser.Arn
-              Bool:
-                "aws:MultiFactorAuthPresent": "true"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess

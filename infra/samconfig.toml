@@ -3,12 +3,15 @@ version = 0.1
 # single source of truth: stack name, region and env variables set here and read from
 # deployment scripts and Lambda Java code
 
+# if changing the stack names: update in the workflow yamls
+# if changing the region: update in smoke test URL
+
 # localstack dev environment
 [local.deploy.parameters]
 stack_name = "apiforge-local"
 region = "eu-central-1"
 resolve_s3 = true # auto-created S3 bucket for the template
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+capabilities = ["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
 parameter_overrides = [
     "Environment=local", 
     "AwsRegion=eu-central-1",
@@ -20,7 +23,7 @@ parameter_overrides = [
 stack_name = "apiforge-testing"
 region = "eu-central-1"
 resolve_s3 = true
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+capabilities = ["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
 parameter_overrides = [
     "Environment=testing", 
     "AwsRegion=eu-central-1",
@@ -31,7 +34,7 @@ parameter_overrides = [
 stack_name = "apiforge-stg"
 region = "eu-central-1"
 resolve_s3 = true
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+capabilities = ["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
 parameter_overrides = [
     "Environment=stg", 
     "AwsRegion=eu-central-1", 
@@ -42,7 +45,7 @@ parameter_overrides = [
 stack_name = "apiforge-prod"
 region = "eu-central-1"
 resolve_s3 = true
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+capabilities = ["CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
 parameter_overrides = [
     "Environment=prod", 
     "AwsRegion=eu-central-1", 

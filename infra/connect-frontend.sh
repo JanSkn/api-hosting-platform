@@ -12,7 +12,7 @@ else
   AWS_CMD="aws"
 fi
 
-CONFIG_JS_FILE="public/config.js"
+CONFIG_JS_FILE="config.js" # after build in the dist/ folder, the config.js file will be at root level
 LOCAL_CONFIG_JS_FILE="../web/$CONFIG_JS_FILE"
 
 TEMP_CONFIG=$(mktemp)
@@ -47,17 +47,15 @@ window.APP_CONFIG = {
 };
 EOF
 
-if [[ "$ENVIRONMENT" == "local" ]]; then
+if [[ "$ENVIRONMENT" == "testing" ]]; then
+  echo "⏭️  Environment is 'testing' (CI). Skipping."
+elif [[ "$ENVIRONMENT" == "local" ]]; then
   echo "✅ Writing config.js locally to $LOCAL_CONFIG_JS_FILE"
   cp "$TEMP_CONFIG" "$LOCAL_CONFIG_JS_FILE"
 else
-  if ! $AWS_CMD s3 ls "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION" >/dev/null 2>&1; then
-    echo "Uploading to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."
-    $AWS_CMD s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION"
-    echo "✅ Uploaded to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE"
-  else
-    echo "✅ File already exists in s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE, skipping upload"
-  fi
+  echo "Uploading fresh config to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."
+  $AWS_CMD s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION"
+  echo "✅ Uploaded to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE"
 fi
 
 # file auto-deleted by trap

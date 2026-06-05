@@ -1,0 +1,148 @@
+name: Production Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_sha:
+        description: 'Leave empty for standard deployment or specify commit SHA of historical manifest for rollback deployment'
+        required: false
+
+jobs:
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write # to push tags to the repo
+    
+    # only authorized users can trigger deployment to prod with GitHub environment protection rule
+    environment: production
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # GH Actions checks out without git history by default, we need the full history to be able to push tags.
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-just
+
+      - name: Configure AWS Production Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::591292939760:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Download Artifacts from S3
+        # do not include common-utils as it is not a lambda and not needed for deployment, only for compilation of other modules
+        run: |
+          # bucket is in staging account, prod has read access
+          AWS_STG_ACCOUNT_ID=071308038858
+          STG_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          
+          if [ -n "${{ github.event.inputs.manifest_sha }}" ]; then
+            TARGET_SHA="${{ github.event.inputs.manifest_sha }}"
+            MANIFEST_SOURCE="manifests/$TARGET_SHA/manifest.json"
+            echo "🔄 ROLLBACK MODE: Loading historical manifest from $MANIFEST_SOURCE"
+          else
+            MANIFEST_SOURCE="manifests/latest/manifest.json"
+            echo "🚀 STANDARD MODE: Loading current manifest from $MANIFEST_SOURCE"
+          fi
+          
+          echo "Downloading manifest from Staging S3..."
+          if ! aws s3 cp "$STG_BUCKET/$MANIFEST_SOURCE" ./manifest.json; then
+            echo "❌ ERROR: Manifest file $MANIFEST_SOURCE not found on S3!"
+            exit 1
+          fi
+
+          if [ -z "${{ github.event.inputs.manifest_sha }}" ]; then
+            MANIFEST_MAIN_SHA=$(jq -r '.main_sha' ./manifest.json)
+            CURRENT_GIT_SHA="${{ github.sha }}"
+            
+            echo "Validating STG status..."
+            if [ "$MANIFEST_MAIN_SHA" != "$CURRENT_GIT_SHA" ]; then
+              echo "❌ ERROR: The 'latest' manifest from S3 belongs to a different commit ($MANIFEST_MAIN_SHA) than this run ($CURRENT_GIT_SHA)!"
+              echo "Probably the staging pipeline or the smoke test failed."
+              exit 1
+            fi
+            echo "✅ Staging validation successful! The state is current and tested."
+          fi
+
+          for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
+            MODULE_SHA=$(jq -r ".modules.\"$MODULE\"" ./manifest.json)
+            
+            echo "Downloading $MODULE with version $MODULE_SHA from STG S3..."
+            mkdir -p lambda/$MODULE/target
+            
+            aws s3 cp \
+              "$STG_BUCKET/$MODULE/$MODULE_SHA/function.zip" \
+              lambda/$MODULE/target/function.zip
+          done
+
+      # we read from the staging bucket but deploy to the production bucket
+      - name: Deploy Frontend Artifact to Frontend S3 Bucket
+        run: |
+          AWS_PRD_ACCOUNT_ID="591292939760"
+          AWS_STG_ACCOUNT_ID=071308038858
+          FRONTEND_MODULE="web"
+          STG_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          PROD_WEB_BUCKET="apiforge-frontend-artifacts-$AWS_PRD_ACCOUNT_ID"
+          SHA=$(jq -r ".modules.\"$FRONTEND_MODULE\"" ./manifest.json)
+                      
+          aws s3 cp "$STG_BUCKET/$FRONTEND_MODULE/$SHA/frontend.zip" ./frontend-local.zip
+
+          echo "Unzipping frontend package..."
+          unzip -q frontend-local.zip -d ./frontend-dist
+          
+          echo "Synchronizing files with the production web S3 bucket..."
+          # CRITICAL: We must use --exclude "config.js" here. 
+          # Because config.js is dynamically generated later by the `connect-frontend.sh` script,
+          # it is missing from our local './frontend-dist' artifact. Without the exclude flag, 
+          # the `--delete` parameter would wipe out the existing config.js on S3 at the start 
+          # of the deployment, causing a temporary app outage until the stack deployment finishes.
+          aws s3 sync ./frontend-dist/ "s3://$PROD_WEB_BUCKET/" --delete --exclude "config.js"
+
+      - name: Deploy to Production
+        run: just deploy-stack prod
+
+      # we need to invalidate the CloudFront cache after deployment to make sure the new frontend version is served, otherwise users might still get the old cached version.
+      - name: Invalidate CloudFront CDN Cache
+        run: |
+          STACK_NAME="apiforge-prod"
+          
+          echo "Fetching CloudFront Distribution ID from CloudFormation Outputs..."
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)
+          
+          if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" == "None" ]; then
+            echo "❌ ERROR: Could not find CloudFrontDistributionId in Stack Outputs"
+            exit 1
+          fi
+          
+          echo "🚀 Triggering cache invalidation for Distribution: $DISTRIBUTION_ID"
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" \
+            --query "Invalidation.Id" \
+            --output text)
+          
+          echo "✅ Invalidation submitted successfully. ID: $INVALIDATION_ID"
+          echo "Note: It usually takes 1-3 minutes for AWS CloudFront to apply this globally."
+
+      # with the tag we can easily track which version is currently in prod and also roll back to a specific version if needed by just redeploying the corresponding commit SHA
+      - name: Create and Push Production Git Tag
+        run: |
+          DATE=$(date +'%Y-%m-%d')
+          FULL_SHA="${{ github.sha }}"
+          TAG_NAME="prod-$DATE-$FULL_SHA"
+                    
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git tag -a "$TAG_NAME" -m "Production Deployment of $DATE (Commit: $FULL_SHA)"
+          git push origin "$TAG_NAME"

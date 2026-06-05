@@ -9,6 +9,9 @@ For local development, install
 - awslocal cli
 - playwright for frontend tests
 
+## Bootstrapping
+- uv for Python script to initialize AWS IAM roles
+
 ## Deployments
 - sam instead of samlocal
 - aws cli instead of awslocal cli

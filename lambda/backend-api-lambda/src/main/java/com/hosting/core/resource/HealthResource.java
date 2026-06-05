@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Path("/health") // if renamed, change in template.yml as well
+@Path("/health") // if renamed, change in template.yml and smoke test as well
 public class HealthResource {
 
   @GET

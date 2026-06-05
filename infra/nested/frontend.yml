@@ -26,6 +26,7 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
+      BucketName: !Sub apiforge-frontend-artifacts-${AWS::AccountId} # if renamed, update in the workflow yamls as well
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -37,7 +38,7 @@ Resources:
       DistributionConfig:
         Enabled: true
         Origins:
-          - DomainName: !GetAtt S3Bucket.DomainName
+          - DomainName: !GetAtt S3Bucket.RegionalDomainName
             Id: S3BucketOrigin # custom ID
             OriginAccessControlId: !Ref OriginAccessControl
             S3OriginConfig:
@@ -95,7 +96,8 @@ Resources:
             Override: true
             Preload: true
           ContentSecurityPolicy:
-            ContentSecurityPolicy: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"
+            # TODO: make more restrictive
+            ContentSecurityPolicy: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
             Override: true
           ContentTypeOptions:
             Override: true
@@ -111,8 +113,11 @@ Resources:
             Protection: true
 
 Outputs:
-  CloudFrontDistribution:
+  CloudFrontDistributionName:
     Value: !GetAtt CloudFrontDistribution.DomainName
+
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution
 
   WebBucketName:
     Value: !Ref S3Bucket

@@ -7,7 +7,10 @@ mod function-deployer-lambda "lambda/function-deployer-lambda"
 mod web "web"
 
 assume profile:
-    aws-vault exec {{ profile }} -d 8h
+    aws-vault exec {{ profile }}
+
+login profile:
+    aws-vault login {{ profile }}
 
 encrypt-localstack-token:
     sops -e -i secrets/localstack-token.yaml

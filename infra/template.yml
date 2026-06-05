@@ -21,7 +21,7 @@ Globals:
 Parameters:
   Environment:
     Type: String
-    AllowedValues: [local, testing,stg, prod]
+    AllowedValues: [local, testing, stg, prod]
   AwsRegion:
     Type: String
   LambdaMemory:
@@ -35,13 +35,14 @@ Parameters:
     Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
-    Default: "code-uploads"
+    Default: "apiforge-user-code-uploads" # must be unique worldwide
   EcrRepositoryName:
     Type: String
     Default: "user-apps"
 
 Conditions:
-  isNotLocal: !Not [ !Equals [ !Ref Environment, local ] ]
+  isDeployedEnvironment: !Or [ !Equals [ !Ref Environment, stg ], !Equals [ !Ref Environment, prod ] ]
+  isStg: !Equals [ !Ref Environment, stg ]
 
 Resources:
   AuthStack:
@@ -51,7 +52,7 @@ Resources:
 
   FrontendStack:
     Type: AWS::Serverless::Application
-    Condition: isNotLocal
+    Condition: isDeployedEnvironment
     Properties:
       Location: ./nested/frontend.yml
 
@@ -63,7 +64,7 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'"
         AllowHeaders: "'Accept,Authorization,Content-Type,X-Requested-With'"
-        AllowOrigin: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "'*'" ]
+        AllowOrigin: !If [ isDeployedEnvironment, !Sub "https://${FrontendStack.Outputs.CloudFrontDistributionName}", "'*'" ]
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         AddDefaultAuthorizerToCorsPreflight: false
@@ -78,7 +79,7 @@ Resources:
       CodeUri: ../lambda/backend-api-lambda/target/function.zip
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Timeout: 15
-      ReservedConcurrentExecutions: !If [isNotLocal, 10, 1]
+      ReservedConcurrentExecutions: !If [isDeployedEnvironment, 10, 1]
       Architectures:
         - arm64
       MemorySize: !Ref LambdaMemory
@@ -87,7 +88,7 @@ Resources:
         HealthEvent:
           Type: Api
           Properties:
-            Path: /api/v1/health # renaming this endpoint requires renaming in backend api health resource
+            Path: /api/v1/health # renaming this endpoint requires renaming in backend api health resource and smoke test as well
             Method: GET
             RestApiId: !Ref APIGateway
             Auth:
@@ -102,7 +103,7 @@ Resources:
         Variables:
           # for CORS header in lambda responses, set by Quarkus in application.properties
           LAMBDA_ENVIRONMENT: "BACKEND_API_LAMBDA"
-          ALLOWED_ORIGIN: !If [ isNotLocal, !Sub "https://${FrontendStack.Outputs.CloudFrontDistribution}", "http://localhost:8080" ]
+          ALLOWED_ORIGIN: !If [ isDeployedEnvironment, !Sub "https://${FrontendStack.Outputs.CloudFrontDistributionName}", "http://localhost:8080" ]
           COGNITO_USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
           DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
           MAX_DEPLOYMENTS_PER_USER: !Ref MaxDeploymentsPerUser 
@@ -198,7 +199,7 @@ Resources:
     Properties:
       CodeUri: ../lambda/sqs-dispatcher-lambda/target/function.zip
       Handler: com.hosting.dispatcher.handler.SqsDispatcherHandler::handleRequest
-      Timeout: !If [ isNotLocal, 30, 120 ] # if CodeBuild startBuild takes very long, longer for local development due to polling for build completion
+      Timeout: !If [ isDeployedEnvironment, 30, 120 ] # if CodeBuild startBuild takes very long, longer for local development due to polling for build completion
       MemorySize: 128 # only dispatching, not much memory needed
       Events:
         SQSEvent:
@@ -356,6 +357,45 @@ Resources:
       #Policies:
         # TODO
 
+  # used to store build artifacts for staging and production deployments, see backend-ci.yml/frontend-ci.yml
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Condition: isStg # we only need the bucket for CI artifact storage in staging, production can read from there but does not need to write, and local/testing do not need it at all
+    Properties:
+      BucketName: !Sub apiforge-artifacts-${AWS::AccountId} # if renamed, update in the workflow yamls and in the artifact bucket policy as well
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+
+  ArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: isStg
+    Properties:
+      Bucket: !Ref ArtifactBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowProdGitHubRoleToRead
+            Effect: Allow
+            Principal:
+              # we need to give read access to the production GitHub Actions role as well, because we upload all artifacts to the staging bucket and prod needs to read from there for deployments, see deploy-prod.yml
+              AWS: "arn:aws:iam::591292939760:role/GitHubActionsDeploymentRole" # role name should match the one in bootstrap/template.yml
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource: !Sub "arn:aws:s3:::apiforge-artifacts-${AWS::AccountId}/*"
+          - Sid: AllowProdGitHubRoleToList
+            Effect: Allow
+            Principal:
+              AWS: "arn:aws:iam::591292939760:role/GitHubActionsDeploymentRole"
+            Action:
+              - s3:ListBucket
+            Resource: !Sub "arn:aws:s3:::apiforge-artifacts-${AWS::AccountId}"
+
   BackendAPILogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -400,6 +440,17 @@ Outputs:
   UserPoolClientId:
     Description: "UserPoolClient ID"
     Value: !GetAtt AuthStack.Outputs.UserPoolClientId
+
   DockerfileTemplateBucket:
     Description: "Bucket containing Dockerfile templates"
     Value: !Ref DockerfileTemplateBucket
+
+  WebBucketName:
+    Description: "Name of the S3 bucket for frontend artifacts"
+    Condition: isDeployedEnvironment
+    Value: !Ref FrontendStack.Outputs.WebBucketName
+
+  CloudFrontDistributionId:
+    Description: "CloudFront Distribution ID for the frontend"
+    Condition: isDeployedEnvironment
+    Value: !Ref FrontendStack.Outputs.CloudFrontDistributionId
