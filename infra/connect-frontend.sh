@@ -54,7 +54,12 @@ elif [[ "$ENVIRONMENT" == "local" ]]; then
   cp "$TEMP_CONFIG" "$LOCAL_CONFIG_JS_FILE"
 else
   echo "Uploading fresh config to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."
-  $AWS_CMD s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION"
+  # --content-type is required: the source is an extension-less mktemp file, so
+  # aws s3 cp would default to binary/octet-stream. Combined with the
+  # X-Content-Type-Options: nosniff header from CloudFront, the browser would
+  # refuse to execute config.js as a <script>, leaving window.APP_CONFIG unset.
+  $AWS_CMD s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" \
+    --region "$AWS_REGION" --content-type "text/javascript"
   echo "✅ Uploaded to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE"
 fi
 
