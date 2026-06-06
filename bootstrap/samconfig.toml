@@ -2,8 +2,16 @@ version = 0.1
 
 # region must be the same as in infra/samconfig.toml
 
-[default.deploy.parameters]
-stack_name = "iam-stack"
+[stg.deploy.parameters]
+stack_name = "bootstrap-stack"
 region = "eu-central-1"
 resolve_s3 = true # auto-created S3 bucket for the template
 capabilities = ["CAPABILITY_NAMED_IAM"]
+parameter_overrides = ["Environment=stg"]
+
+[prod.deploy.parameters]
+stack_name = "bootstrap-stack"
+region = "eu-central-1"
+resolve_s3 = true # auto-created S3 bucket for the template
+capabilities = ["CAPABILITY_NAMED_IAM"]
+parameter_overrides = ["Environment=prod"]

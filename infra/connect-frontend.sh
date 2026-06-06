@@ -13,7 +13,7 @@ else
 fi
 
 CONFIG_JS_FILE="config.js" # after build in the dist/ folder, the config.js file will be at root level
-LOCAL_CONFIG_JS_FILE="../web/$CONFIG_JS_FILE"
+LOCAL_CONFIG_JS_FILE="../web/public/$CONFIG_JS_FILE"
 
 TEMP_CONFIG=$(mktemp)
 trap 'rm -f "$TEMP_CONFIG"' EXIT

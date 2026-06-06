@@ -8,9 +8,11 @@ For local development, install
 - sops
 - awslocal cli
 - playwright for frontend tests
+- uv for Python script to bootstrap AWS IAM roles
 
 ## Bootstrapping
-- uv for Python script to initialize AWS IAM roles
+- run per account (staging/production) to create the GitHub OIDC deployment role and (for staging only)
+the Artifact bucket because it must exist before the first deployment.
 
 ## Deployments
 - sam instead of samlocal
