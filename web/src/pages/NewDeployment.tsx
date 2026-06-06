@@ -12,6 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors";
 import { useCreateDeployment } from "@/hooks/useDeployments";
 import type { DeploymentRuntime } from "@/api/deployments";
 import { useToast } from "@/hooks/use-toast";
@@ -100,7 +101,12 @@ const NewDeployment = () => {
       },
       {
         onSuccess: (deployment) => navigate(`/deployment/${deployment.id}`),
-        onError: () => toast({ title: "Deployment failed", variant: "destructive" }),
+        onError: (error) =>
+          toast({
+            title: "Deployment failed",
+            description: getErrorMessage(error),
+            variant: "destructive",
+          }),
       }
     );
   };

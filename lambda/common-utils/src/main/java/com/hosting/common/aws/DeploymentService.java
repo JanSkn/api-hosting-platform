@@ -10,6 +10,7 @@ import com.hosting.common.config.S3Config;
 import com.hosting.common.dto.CreateDeploymentRequest;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
+import com.hosting.common.exceptions.DuplicateDeploymentNameException;
 import com.hosting.common.exceptions.GitHubDownloadException;
 import com.hosting.common.exceptions.InvalidGitHubUrlException;
 import com.hosting.common.exceptions.UserCodeNotUploadedException;
@@ -93,6 +94,8 @@ public class DeploymentService {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
     LOGGER.info("Initializing deployment (runtime: {})", request.runtime());
 
+    assertNameAvailable(userId, request.name());
+
     Deployment deployment = new Deployment();
     deployment.setUserId(userId);
     deployment.setDeploymentId(deploymentId);
@@ -105,6 +108,24 @@ public class DeploymentService {
     deploymentMetadata.put(deployment); // will fail if more than allowed deployments per user
 
     return deploymentId;
+  }
+
+  // Deployment names must be unique per user (case-insensitive, trimmed).
+  private void assertNameAvailable(String userId, String name) {
+    if (name == null) {
+      return;
+    }
+    String normalized = name.trim();
+    boolean nameTaken =
+        getDeployments(userId).orElseGet(List::of).stream()
+            .map(Deployment::getName)
+            .filter(existing -> existing != null)
+            .anyMatch(existing -> existing.trim().equalsIgnoreCase(normalized));
+
+    if (nameTaken) {
+      LOGGER.warn("Deployment name '{}' already in use", normalized);
+      throw new DuplicateDeploymentNameException(normalized);
+    }
   }
 
   public void triggerDeployment(String userId, String deploymentId) {

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLogin } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,7 +21,12 @@ const Login = () => {
       { email, password },
       {
         onSuccess: () => navigate("/"),
-        onError: () => toast({ title: "Login failed", variant: "destructive" }),
+        onError: (error) =>
+          toast({
+            title: "Login failed",
+            description: getErrorMessage(error),
+            variant: "destructive",
+          }),
       }
     );
   };
