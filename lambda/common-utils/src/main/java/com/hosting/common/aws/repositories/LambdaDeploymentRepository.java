@@ -24,6 +24,7 @@ public class LambdaDeploymentRepository {
   }
 
   public void createFunction(String deploymentId, String imageUri, String accountId) {
+    // role name must match the one in template.yml
     String roleArn = String.format("arn:aws:iam::%s:role/UserFunctionRole", accountId);
     String functionName = getFunctionName(deploymentId);
 
