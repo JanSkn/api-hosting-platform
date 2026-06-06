@@ -230,7 +230,7 @@ Resources:
       Environment:
         Variables:
           LAMBDA_ENVIRONMENT: "SQS_DISPATCHER_LAMBDA"
-          CODEBUILD_PROJECT_NAME: !Ref CodeBuild
+          CODEBUILD_PROJECT_NAME: apiforge-user-code-builder # must match the name defined in the CodeBuildResource
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
           DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
@@ -296,6 +296,8 @@ Resources:
   CodeBuild:
     Type: AWS::CodeBuild::Project
     Properties:
+      # custom name to avoid circular dependencies
+      Name: "apiforge-user-code-builder" # if name changed, change as well other calls
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
         Type: NO_ARTIFACTS
@@ -306,10 +308,10 @@ Resources:
         PrivilegedMode: true # required für Docker builds          
       Source: # override in CodeBuildRepository to specific user code, but mandatory field
         Type: NO_SOURCE
-      # LogsConfig:
-      #   CloudWatchLogs:
-      #     Status: ENABLED
-      #     GroupName: !Ref CodeBuildLogGroup
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
 
   EcrRepository:
     Type: AWS::ECR::Repository
@@ -385,7 +387,7 @@ Resources:
                 build-status:
                   - "SUCCEEDED"
                 project-name: # project name must be passed via environment variable in SQS dispatcher and match the one in CodeBuild resource
-                  - !Ref CodeBuild
+                  - apiforge-user-code-builder # must match the name defined in the CodeBuild Resource
       Environment:
         Variables:
             LAMBDA_ENVIRONMENT: "FUNCTION_DEPLOYER_LAMBDA"
@@ -421,11 +423,11 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${BackendAPIFunction}" 
       RetentionInDays: 7
 
-  # CodeBuildLogGroup:
-  #   Type: AWS::Logs::LogGroup
-  #   Properties:
-  #     LogGroupName: !Sub "/aws/codebuild/${CodeBuild}" 
-  #     RetentionInDays: 7
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/aws/codebuild/apiforge-user-code-builder"
+      RetentionInDays: 7
 
   SQSDispatcherLogGroup:
     Type: AWS::Logs::LogGroup
