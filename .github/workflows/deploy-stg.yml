@@ -26,8 +26,17 @@ jobs:
       id-token: write
       contents: read
 
+    env:
+      AWS_STG_ACCOUNT_ID: "071308038858"
+      # the exact commit the publish-main run built the artifact set for
+      SHA: ${{ github.event.workflow_run.head_sha }}
+
     steps:
+      # check out the exact commit that was built, so the deployed SAM template /
+      # scripts match the downloaded artifacts
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: ./.github/actions/setup-just
 
       - name: Configure AWS Staging Credentials (OIDC)
@@ -40,54 +49,29 @@ jobs:
         uses: aws-actions/setup-sam@v2
 
       - name: Download Backend Artifacts from S3
-        # do not include common-utils as it is not a lambda and not needed for deployment, only for compilation of other modules
         run: |
-          AWS_STG_ACCOUNT_ID=071308038858
-          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
-          MANIFEST_SOURCE="manifests/latest/manifest.json"
-
-          aws s3 cp "$BUCKET/$MANIFEST_SOURCE" ./manifest.json
-
+          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
           for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
-            MODULE_SHA=$(jq -r ".modules.\"$MODULE\"" ./manifest.json)
-
-            if [ -z "$MODULE_SHA" ] || [ "$MODULE_SHA" = "null" ]; then
-              echo "❌ ERROR: No artifact version for $MODULE in manifest (never built?). Aborting."
-              exit 1
-            fi
-
-            echo "Downloading $MODULE with version $MODULE_SHA..."
+            echo "Downloading $MODULE ($SHA)..."
             mkdir -p lambda/$MODULE/target
-            
-            aws s3 cp \
-              "$BUCKET/$MODULE/$MODULE_SHA/function.zip" \
-              lambda/$MODULE/target/function.zip
+            aws s3 cp "$BUILD_PREFIX/$MODULE/function.zip" "lambda/$MODULE/target/function.zip"
           done
 
       - name: Deploy Frontend Artifact to Frontend S3 Bucket
         run: |
-          AWS_STG_ACCOUNT_ID=071308038858
-          FRONTEND_MODULE="web"
-          SHA=$(jq -r ".modules.\"$FRONTEND_MODULE\"" ./manifest.json)
-
-          if [ -z "$SHA" ] || [ "$SHA" = "null" ]; then
-            echo "❌ ERROR: No artifact version for $FRONTEND_MODULE in manifest (never built?). Aborting."
-            exit 1
-          fi
-
-          ARTIFACT_S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
           TARGET_BUCKET="apiforge-frontend-artifacts-$AWS_STG_ACCOUNT_ID"
-                      
-          aws s3 cp "$ARTIFACT_S3_BUCKET/$FRONTEND_MODULE/$SHA/frontend.zip" ./frontend-local.zip
+
+          aws s3 cp "$BUILD_PREFIX/frontend.zip" ./frontend-local.zip
 
           echo "Unzipping frontend package..."
           unzip -q frontend-local.zip -d ./frontend-dist
-          
+
           echo "Synchronizing files with the web S3 bucket..."
-          # CRITICAL: We must use --exclude "config.js" here. 
+          # CRITICAL: We must use --exclude "config.js" here.
           # Because config.js is dynamically generated later by the `connect-frontend.sh` script,
-          # it is missing from our local './frontend-dist' artifact. Without the exclude flag, 
-          # the `--delete` parameter would wipe out the existing config.js on S3 at the start 
+          # it is missing from our local './frontend-dist' artifact. Without the exclude flag,
+          # the `--delete` parameter would wipe out the existing config.js on S3 at the start
           # of the deployment, causing a temporary app outage until the stack deployment finishes.
           aws s3 sync "./frontend-dist/" "s3://$TARGET_BUCKET/" --delete --exclude "config.js"
 
@@ -98,25 +82,25 @@ jobs:
       - name: Invalidate CloudFront CDN Cache
         run: |
           STACK_NAME="apiforge-stg"
-          
+
           echo "Fetching CloudFront Distribution ID from CloudFormation Outputs..."
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
             --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
             --output text)
-          
+
           if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" == "None" ]; then
             echo "❌ ERROR: Could not find CloudFrontDistributionId in Stack Outputs"
             exit 1
           fi
-          
+
           echo "🚀 Triggering cache invalidation for Distribution: $DISTRIBUTION_ID"
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id "$DISTRIBUTION_ID" \
             --paths "/*" \
             --query "Invalidation.Id" \
             --output text)
-          
+
           echo "✅ Invalidation submitted successfully. ID: $INVALIDATION_ID"
           echo "Note: It usually takes 1-3 minutes for AWS CloudFront to apply this globally."
 
@@ -126,12 +110,24 @@ jobs:
             --stack-name "apiforge-stg" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiId'].OutputValue" \
             --output text)
-            
+
           echo "Checking health endpoint..."
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APID_ID.execute-api.eu-central-1.amazonaws.com/stg/api/v1/health")
-          
+
           if [ "$STATUS" -ne 200 ]; then
             echo "❌ ERROR: Smoke Test failed - API responded with status $STATUS"
             exit 1
           fi
           echo "✅ API is healthy (200 OK)"
+
+      # Runs only if every previous step (incl. the smoke test) passed. The marker is
+      # the gate for production: release.yml / deploy-prod.yml only accept a commit that
+      # has staged/<sha>. staged/latest is the default release target.
+      - name: Mark commit as staged
+        run: |
+          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          printf '%s' "$SHA" > sha.txt
+          echo "Writing staging marker staged/$SHA ..."
+          aws s3 cp sha.txt "$BUCKET/staged/$SHA"
+          aws s3 cp sha.txt "$BUCKET/staged/latest"
+          echo "✅ Marked $SHA as staged."

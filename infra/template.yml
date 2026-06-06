@@ -411,7 +411,9 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref DeploymentsMetadataTable
 
-  # used to store build artifacts for staging and production deployments, see backend-ci.yml/frontend-ci.yml
+  # stores immutable, commit-SHA-versioned build artifacts (builds/<sha>/...) and the
+  # staging markers (staged/<sha>, staged/latest). See publish-main.yml / deploy-stg.yml /
+  # deploy-prod.yml / release.yml. Production reads from here cross-account (ArtifactBucketPolicy).
   ArtifactBucket:
     Type: AWS::S3::Bucket
     Condition: isStg # we only need the bucket for CI artifact storage in staging, production can read from there but does not need to write, and local/testing do not need it at all
@@ -421,7 +423,15 @@ Resources:
         Status: Enabled
       LifecycleConfiguration:
         Rules:
-          - Id: DeleteOldArtifacts
+          # build artifacts are keyed by commit SHA and never overwritten. Expire them
+          # after 180 days; this also bounds how far back a prod rollback can reach
+          # (older versions can be rebuilt from their git tag).
+          - Id: ExpireOldBuilds
+            Status: Enabled
+            Prefix: builds/
+            ExpirationInDays: 180
+          # tidy up overwritten object versions (e.g. the staged/latest pointer)
+          - Id: CleanupOldVersions
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
 

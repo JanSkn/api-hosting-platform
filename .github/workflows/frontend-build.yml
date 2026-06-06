@@ -1,21 +1,18 @@
 name: Frontend Build and Publish
 
-# We only build from the canonical main state and upload an immutable,
-# SHA-versioned artifact under the main commit SHA.
+# Builds the frontend from the canonical main state and uploads one immutable,
+# commit-SHA-versioned artifact under builds/<sha>/frontend.zip.
+# Lint/type-check/tests already ran as the PR gate (frontend-ci.yml).
 #
 # We upload to the staging artifacts bucket (not the web bucket directly) so that
 # 1) we do not skip the stg -> prod promotion flow, and
 # 2) we can roll back to a previous version in prod.
 on:
   workflow_call:
-    inputs:
-      module-name:
-        required: true
-        type: string
 
 jobs:
   build-and-publish:
-    name: Build & Publish – ${{ inputs.module-name }}
+    name: Build & Publish Frontend
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,7 +24,7 @@ jobs:
       - uses: ./.github/actions/setup-just
       - uses: ./.github/actions/setup-node
         with:
-          module-name: ${{ inputs.module-name }}
+          module-name: web
 
       - name: Configure AWS Staging Credentials (OIDC) for Code Artifacts
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,22 +33,21 @@ jobs:
           aws-region: eu-central-1
 
       - name: Install dependencies
-        run: just ${{ inputs.module-name }} install
+        run: just web install
 
       - name: Build
-        run: just ${{ inputs.module-name }} build
+        run: just web build
 
-      - name: Upload Build Artifact to S3
+      - name: Upload frontend artifact to S3
         run: |
           AWS_STG_ACCOUNT_ID=071308038858
-          MODULE="${{ inputs.module-name }}"
           SHA="${{ github.sha }}"
-          S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
 
-          echo "Zipping content of dist/..."
-          cd "$MODULE/dist"
-          zip -r ../../frontend-build.zip .
+          echo "Zipping content of web/dist/..."
+          cd web/dist
+          zip -r ../../frontend.zip .
           cd ../..
 
-          echo "Uploading Frontend to S3..."
-          aws s3 cp frontend-build.zip "$S3_BUCKET/$MODULE/$SHA/frontend.zip"
+          echo "Uploading frontend ($SHA)..."
+          aws s3 cp frontend.zip "$BUILD_PREFIX/frontend.zip"

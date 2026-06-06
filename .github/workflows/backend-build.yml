@@ -1,18 +1,16 @@
 name: Backend Build and Publish
 
-# We only build from the canonical main state and upload an immutable,
-# SHA-versioned artifact. github.sha here is the main commit, so the manifest
-# in publish-main.yml will find the artifact under the same SHA.
+# Builds the ENTIRE backend Maven reactor in one job and uploads all three Lambda
+# artifacts as one immutable, commit-SHA-versioned set under builds/<sha>/.
+# Tests/lint already ran as the PR gate (backend-ci.yml); here we only (re)build
+# from the canonical main state. The three lambdas always move together with the
+# same commit, so they share one version: the commit SHA.
 on:
   workflow_call:
-    inputs:
-      module-name:
-        required: true
-        type: string
 
 jobs:
   build-and-publish:
-    name: Build & Publish – ${{ inputs.module-name }}
+    name: Build & Publish Backend
     runs-on: ubuntu-latest
 
     permissions:
@@ -24,8 +22,9 @@ jobs:
       - uses: ./.github/actions/setup-java-maven
       - uses: ./.github/actions/setup-just
 
-      - name: Create Build Artifact
-        run: just lambda install ${{ inputs.module-name }}
+      # one reactor build produces every module's target/function.zip
+      - name: Build all backend modules
+        run: just lambda install-all
 
       - name: Configure AWS Staging Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -33,18 +32,14 @@ jobs:
           role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
 
-      # Upload immutable artifact versioned by commit SHA (the main SHA).
-      # This allows deploying a specific known-good version to prod even after
-      # GitHub Actions artifact retention has expired, because we do manual
-      # deployments after stg. The manifest in publish-main.yml then references
-      # exactly this SHA.
-      - name: Upload Build Artifact to S3
+      - name: Upload backend artifacts to S3
         run: |
           AWS_STG_ACCOUNT_ID=071308038858
-          MODULE="${{ inputs.module-name }}"
           SHA="${{ github.sha }}"
-          LOCAL_ZIP="lambda/$MODULE/target/function.zip"
-          S3_BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
 
-          echo "Uploading immutable artifact to S3 ($SHA)..."
-          aws s3 cp "$LOCAL_ZIP" "$S3_BUCKET/$MODULE/$SHA/function.zip"
+          # common-utils is not a Lambda (only a build dependency) -> not uploaded
+          for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
+            echo "Uploading $MODULE ($SHA)..."
+            aws s3 cp "lambda/$MODULE/target/function.zip" "$BUILD_PREFIX/$MODULE/function.zip"
+          done

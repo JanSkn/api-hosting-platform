@@ -1,0 +1,78 @@
+name: Create Release
+
+# Manually create a versioned Release + git tag pointing at a commit that already
+# passed staging. Publishing the Release triggers deploy-prod.yml.
+#
+# Default target is the latest staged commit (staged/latest). For a rollback,
+# pass an older staged commit SHA explicitly.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release / tag name, e.g. v1.2.3'
+        required: true
+      sha:
+        description: 'Commit SHA to release (must have passed staging). Empty = latest staged commit.'
+        required: false
+
+permissions:
+  id-token: write # read the staging bucket via OIDC
+  contents: write # create the tag + release
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_STG_ACCOUNT_ID: "071308038858"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the tag can point at any staged commit
+
+      - name: Configure AWS Staging Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      - name: Resolve and verify staged commit
+        run: |
+          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          SHA="${{ github.event.inputs.sha }}"
+
+          if [ -z "$SHA" ]; then
+            echo "No SHA given - using the latest staged commit..."
+            SHA=$(aws s3 cp "$BUCKET/staged/latest" - 2>/dev/null | tr -d '[:space:]' || true)
+            if [ -z "$SHA" ]; then
+              echo "❌ ERROR: No staged/latest pointer found. Has anything passed staging yet?"
+              exit 1
+            fi
+          fi
+
+          echo "Verifying staging marker for $SHA ..."
+          if ! aws s3 ls "$BUCKET/staged/$SHA" >/dev/null 2>&1; then
+            echo "❌ ERROR: Commit $SHA has no staging marker. Only staged commits can be released."
+            exit 1
+          fi
+
+          if ! git cat-file -e "${SHA}^{commit}" 2>/dev/null; then
+            echo "❌ ERROR: Commit $SHA not found in repository history."
+            exit 1
+          fi
+
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+          echo "✅ Releasing staged commit $SHA"
+
+      - name: Create GitHub Release + tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          echo "Creating release $VERSION at $SHA ..."
+          gh release create "$VERSION" \
+            --target "$SHA" \
+            --title "$VERSION" \
+            --generate-notes
