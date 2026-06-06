@@ -18,9 +18,6 @@ on:
         type: string
         required: false
 
-# only authorized users can trigger deployment to prod with GitHub environment protection rule
-environment: production
-
 jobs:
   create-release:
     name: Create Release
