@@ -1,10 +1,10 @@
 name: Backend Build and Publish
 
-# Builds the ENTIRE backend Maven reactor in one job and uploads all three Lambda
+# Builds the Maven backend and uploads all three Lambda
 # artifacts as one immutable, commit-SHA-versioned set under builds/<sha>/.
-# Tests/lint already ran as the PR gate (backend-ci.yml); here we only (re)build
-# from the canonical main state. The three lambdas always move together with the
+# The three lambdas always move together with the
 # same commit, so they share one version: the commit SHA.
+# We do this to share the same artifacts between staging and production.
 on:
   workflow_call:
 
@@ -22,7 +22,6 @@ jobs:
       - uses: ./.github/actions/setup-java-maven
       - uses: ./.github/actions/setup-just
 
-      # one reactor build produces every module's target/function.zip
       - name: Build all backend modules
         run: just lambda install-all
 
@@ -32,7 +31,7 @@ jobs:
           role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
 
-      - name: Upload backend artifacts to S3
+      - name: Upload backend artifacts to Staging S3 bucket
         run: |
           AWS_STG_ACCOUNT_ID=071308038858
           SHA="${{ github.sha }}"

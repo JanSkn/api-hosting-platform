@@ -1,9 +1,7 @@
 name: Frontend Build and Publish
 
-# Builds the frontend from the canonical main state and uploads one immutable,
+# Builds the frontend and uploads one immutable,
 # commit-SHA-versioned artifact under builds/<sha>/frontend.zip.
-# Lint/type-check/tests already ran as the PR gate (frontend-ci.yml).
-#
 # We upload to the staging artifacts bucket (not the web bucket directly) so that
 # 1) we do not skip the stg -> prod promotion flow, and
 # 2) we can roll back to a previous version in prod.

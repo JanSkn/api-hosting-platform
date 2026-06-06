@@ -9,8 +9,7 @@ on:
       - main
 
 # Only ever deploy the newest staging state. If publishes pile up, supersede the
-# in-flight staging deploy with the latest (a CloudFormation stack can't update
-# concurrently anyway).
+# in-flight staging deploy with the latest.
 concurrency:
   group: deploy-stg
   cancel-in-progress: true
@@ -28,8 +27,10 @@ jobs:
 
     env:
       AWS_STG_ACCOUNT_ID: "071308038858"
-      # the exact commit the publish-main run built the artifact set for
-      SHA: ${{ github.event.workflow_run.head_sha }}
+      SHA: ${{ github.event.workflow_run.head_sha }} # the exact commit the publish-main run built the artifact set for
+      ARTIFACT_BUCKET: "apiforge-artifacts-071308038858" # artifacts for backend and frontend
+      FRONTEND_BUCKET: "apiforge-frontend-artifacts-071308038858" # frontend artifact copied from ARTIFACT_BUCKET
+      BUILD_PREFIX: "s3://apiforge-artifacts-071308038858/builds/${{ github.event.workflow_run.head_sha }}"
 
     steps:
       # check out the exact commit that was built, so the deployed SAM template /
@@ -42,7 +43,7 @@ jobs:
       - name: Configure AWS Staging Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          role-to-assume: arn:aws:iam::${{ env.AWS_STG_ACCOUNT_ID }}:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
 
       - name: Setup AWS SAM CLI
@@ -50,7 +51,6 @@ jobs:
 
       - name: Download Backend Artifacts from S3
         run: |
-          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
           for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
             echo "Downloading $MODULE ($SHA)..."
             mkdir -p lambda/$MODULE/target
@@ -59,9 +59,6 @@ jobs:
 
       - name: Deploy Frontend Artifact to Frontend S3 Bucket
         run: |
-          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
-          TARGET_BUCKET="apiforge-frontend-artifacts-$AWS_STG_ACCOUNT_ID"
-
           aws s3 cp "$BUILD_PREFIX/frontend.zip" ./frontend-local.zip
 
           echo "Unzipping frontend package..."
@@ -73,7 +70,7 @@ jobs:
           # it is missing from our local './frontend-dist' artifact. Without the exclude flag,
           # the `--delete` parameter would wipe out the existing config.js on S3 at the start
           # of the deployment, causing a temporary app outage until the stack deployment finishes.
-          aws s3 sync "./frontend-dist/" "s3://$TARGET_BUCKET/" --delete --exclude "config.js"
+          aws s3 sync "./frontend-dist/" "s3://$FRONTEND_BUCKET/" --delete --exclude "config.js"
 
       - name: Deploy to Staging
         run: just deploy-stack stg
@@ -121,13 +118,12 @@ jobs:
           echo "✅ API is healthy (200 OK)"
 
       # Runs only if every previous step (incl. the smoke test) passed. The marker is
-      # the gate for production: release.yml / deploy-prod.yml only accept a commit that
+      # the gate for production: trigger-release.yml / deploy-prod.yml only accept a commit that
       # has staged/<sha>. staged/latest is the default release target.
       - name: Mark commit as staged
         run: |
-          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
           printf '%s' "$SHA" > sha.txt
           echo "Writing staging marker staged/$SHA ..."
-          aws s3 cp sha.txt "$BUCKET/staged/$SHA"
-          aws s3 cp sha.txt "$BUCKET/staged/latest"
+          aws s3 cp sha.txt "s3://$ARTIFACT_BUCKET/staged/$SHA"
+          aws s3 cp sha.txt "s3://$ARTIFACT_BUCKET/staged/latest"
           echo "✅ Marked $SHA as staged."

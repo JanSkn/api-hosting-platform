@@ -1,6 +1,6 @@
 name: Production Deployment
 
-# Triggered when a Release is published (see release.yml, which tags a commit that
+# Triggered when a Release is published (see trigger-release.yml, which tags a commit that
 # already passed staging). Deploys exactly that commit's artifact set from the
 # staging bucket to production. Rollback = publish a Release for an older staged commit.
 on:
@@ -37,8 +37,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-just
 
-      # resolve the exact commit the release tag points to (robust regardless of
-      # github.sha semantics for release events)
+      # resolve the exact commit the release tag points to
       - name: Resolve release commit SHA
         run: |
           SHA=$(git rev-parse HEAD)
@@ -48,7 +47,7 @@ jobs:
       - name: Configure AWS Production Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::591292939760:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          role-to-assume: arn:aws:iam::${{ env.AWS_PRD_ACCOUNT_ID }}:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
 
       - name: Setup AWS SAM CLI
@@ -81,7 +80,7 @@ jobs:
       - name: Deploy Frontend Artifact to Frontend S3 Bucket
         run: |
           BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
-          PROD_WEB_BUCKET="apiforge-frontend-artifacts-$AWS_PRD_ACCOUNT_ID"
+          PROD_WEB_BUCKET="apiforge-frontend-$AWS_PRD_ACCOUNT_ID"
 
           aws s3 cp "$BUILD_PREFIX/frontend.zip" ./frontend-local.zip
 

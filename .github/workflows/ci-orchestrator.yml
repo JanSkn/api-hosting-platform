@@ -1,7 +1,5 @@
 name: CI Orchestrator
 
-# Keep the change-detection filters here in sync with publish-main.yml.
-
 on:
   pull_request:
     branches: [main]

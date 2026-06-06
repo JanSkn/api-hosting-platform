@@ -1,12 +1,12 @@
 name: Publish Main Artifacts
 
 # NOTE: S3 artifact layout is shared across this CI/CD. If you change the bucket
-# layout (builds/<sha>/...) here, also update deploy-stg.yml, deploy-prod.yml and release.yml.
+# layout (builds/<sha>/...) here, also update deploy-stg.yml, deploy-prod.yml and trigger-release.yml.
 #
-# Runs on push to main (after the PR gate in ci-orchestrator.yml passed). It builds
+# Runs on push to main (after the PR gate passed). It builds
 # the full backend + frontend from the canonical main state and uploads them as ONE
 # immutable set under builds/<commit-sha>/. The commit SHA is the single version
-# identity - there is no manifest. Staging deploy is chained off this via workflow_run.
+# identity. Staging deploy is chained off this via workflow_run.
 
 on:
   push:
@@ -18,23 +18,13 @@ on:
       - 'lambda/**'
       - 'web/**'
       - '.github/workflows/**'
-  # Manual escape hatch: (re)build + upload the full set for the current main commit,
-  # e.g. to seed a fresh artifact bucket.
-  workflow_dispatch:
 
 # Serialize main publishes so artifact sets are written one commit at a time.
 concurrency:
   group: publish-main
   cancel-in-progress: false
 
-# Required so the reusable build workflows can assume the deploy role via OIDC.
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
-  # Both always run: builds/<sha>/ must contain the COMPLETE set (backend + frontend)
-  # so any staged commit can be deployed in full to prod.
   build-backend:
     uses: ./.github/workflows/backend-build.yml
 
