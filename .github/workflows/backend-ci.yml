@@ -6,6 +6,8 @@ on:
       module-name:
         required: true
         type: string
+    secrets:
+      inherit: true
 
 jobs:
   ci-checks:
