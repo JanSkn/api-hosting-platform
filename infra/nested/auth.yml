@@ -50,7 +50,7 @@ Resources:
         - COGNITO
 
   PreSignUpLogGroup:
-    ype: AWS::Logs::LogGroup
+    Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${PreSignUpFunction}"
       RetentionInDays: 7
