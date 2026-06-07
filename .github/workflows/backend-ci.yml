@@ -39,7 +39,10 @@ jobs:
         # see https://getsops.io/docs/#encrypting-using-age override default lookup
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_SECRET_AGE_KEY }}
-        run: just run-localstack
+        run: |
+          just run-localstack
+          echo "Waiting 10 seconds until container startup is ready..."
+          sleep 10
 
       - name: Deploy Test Stack to LocalStack
         run: just deploy-stack testing
