@@ -6,16 +6,11 @@ on:
       module-name:
         required: true
         type: string
-    secrets:
-      inherit: true
 
 jobs:
   ci-checks:
     name: CI Checks – ${{ inputs.module-name }}
     runs-on: ubuntu-latest
-
-    # contains SOPS secret
-    environment: ci
 
     permissions:
       id-token: write

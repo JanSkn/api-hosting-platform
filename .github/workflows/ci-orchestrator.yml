@@ -51,6 +51,7 @@ jobs:
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: common-utils
+    secrets: inherit
 
   run-sqs-dispatcher-ci-checks:
     needs: detect-code-changes
@@ -61,6 +62,7 @@ jobs:
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: sqs-dispatcher-lambda
+    secrets: inherit
 
   run-function-deployer-ci-checks:
     needs: detect-code-changes
@@ -71,6 +73,7 @@ jobs:
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: function-deployer-lambda
+    secrets: inherit
 
   run-backend-api-ci-checks:
     needs: detect-code-changes
@@ -81,6 +84,7 @@ jobs:
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: backend-api-lambda
+    secrets: inherit
 
   run-frontend-ci-checks:
     needs: detect-code-changes
