@@ -4,10 +4,15 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+      contents: read
+      id-token: write
+
 jobs:
   detect-code-changes:
     name: Detect Code Changes
     runs-on: ubuntu-latest
+
     outputs:
       frontend-changed: ${{ steps.filter.outputs.frontend }}
       core-infra-changed: ${{ steps.filter.outputs.core-infra }}

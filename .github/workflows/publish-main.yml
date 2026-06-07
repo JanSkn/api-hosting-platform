@@ -19,6 +19,10 @@ on:
       - 'web/**'
       - '.github/workflows/**'
 
+permissions:
+      id-token: write
+      contents: read
+
 # Serialize main publishes so artifact sets are written one commit at a time.
 concurrency:
   group: publish-main
