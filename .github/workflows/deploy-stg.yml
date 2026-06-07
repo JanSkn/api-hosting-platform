@@ -40,6 +40,14 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
       - uses: ./.github/actions/setup-just
 
+      - uses: ./.github/actions/setup-node
+        with:
+          module-name: web
+      - name: Install frontend dependencies
+        run: just web install
+      - name: Install Playwright browsers
+        run: cd web && npx playwright install --with-deps chromium
+
       - name: Configure AWS Staging Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -102,6 +110,10 @@ jobs:
           echo "✅ Invalidation submitted successfully. ID: $INVALIDATION_ID"
           echo "Note: It usually takes 1-3 minutes for AWS CloudFront to apply this globally."
 
+          # Hand the IDs to later steps so the e2e run can wait for the new build to go live.
+          echo "DISTRIBUTION_ID=$DISTRIBUTION_ID" >> "$GITHUB_ENV"
+          echo "INVALIDATION_ID=$INVALIDATION_ID" >> "$GITHUB_ENV"
+
       - name: Smoke Test
         run: |
           APID_ID=$(aws cloudformation describe-stacks \
@@ -118,7 +130,36 @@ jobs:
           fi
           echo "✅ API is healthy (200 OK)"
 
-      # Runs only if every previous step (incl. the smoke test) passed. The marker is
+      - name: E2E Tests against Staging
+        run: |
+          # CloudFront invalidation is async; wait for it so we don't test a stale frontend build.
+          echo "Waiting for CloudFront invalidation $INVALIDATION_ID to complete..."
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --id "$INVALIDATION_ID"
+
+          DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name "apiforge-stg" \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionName'].OutputValue" \
+            --output text)
+
+          if [ -z "$DOMAIN" ] || [ "$DOMAIN" == "None" ]; then
+            echo "❌ ERROR: Could not resolve CloudFront domain from stack outputs"
+            exit 1
+          fi
+
+          echo "Running e2e against https://$DOMAIN"
+          E2E_BASE_URL="https://$DOMAIN" just web test-e2e
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-stg
+          path: web/playwright-report/
+          retention-days: 7
+
+      # Runs only if every previous step (incl. the smoke test and e2e) passed. The marker is
       # the gate for production: trigger-release.yml / deploy-prod.yml only accept a commit that
       # has staged/<sha>. staged/latest is the default release target.
       - name: Mark commit as staged

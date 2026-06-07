@@ -469,3 +469,8 @@ Outputs:
     Description: "CloudFront Distribution ID for the frontend"
     Condition: isDeployedEnvironment
     Value: !GetAtt FrontendStack.Outputs.CloudFrontDistributionId
+
+  CloudFrontDistributionName:
+    Description: "CloudFront domain name of the frontend (used as the e2e base URL)"
+    Condition: isDeployedEnvironment
+    Value: !GetAtt FrontendStack.Outputs.CloudFrontDistributionName
