@@ -15,8 +15,8 @@ login profile:
 encrypt-localstack-token:
     sops -e -i secrets/localstack-token.yaml
 
-run-localstack *env-variables:
-    {{ env-variables }} sops exec-env secrets/localstack-token.yaml 'docker compose -f localstack/docker-compose.yml up -d'
+run-localstack:
+    sops exec-env secrets/localstack-token.yaml 'docker compose -f localstack/docker-compose.yml up -d'
 
 delete-stack stack-name region:
     awslocal cloudformation delete-stack --stack-name {{ stack-name }} --region {{ region }}
