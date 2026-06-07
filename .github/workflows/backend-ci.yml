@@ -28,7 +28,8 @@ jobs:
           pip install awscli-local aws-sam-cli-local
 
       - name: Create Build Artifact
-        run: just lambda install ${{ inputs.module-name }}
+        # SAM template needs all lambda artifacts
+        run: just lambda install-all
 
       - name: Static Code Analysis
         run: |

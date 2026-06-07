@@ -12,10 +12,6 @@ jobs:
     name: Build & Check – ${{ inputs.module-name }}
     runs-on: ubuntu-latest
 
-    permissions:
-      id-token: write
-      contents: read  
-
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-just
@@ -23,12 +19,6 @@ jobs:
       - uses: ./.github/actions/setup-node
         with:
           module-name: ${{ inputs.module-name }}
-
-      - name: Configure AWS Staging Credentials (OIDC) for Code Artifacts
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
-          aws-region: eu-central-1
 
       - name: Install dependencies
         run: just ${{ inputs.module-name }} install
