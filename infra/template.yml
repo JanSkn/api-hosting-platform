@@ -64,6 +64,11 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: !Ref Environment
+      MethodSettings: # TODO: customize for endpoint routes, for now enough
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingRateLimit: 5    # req/s
+          ThrottlingBurstLimit: 10
       # as we set the gateway as proxy, it does not add any CORS headers, so we set them in Quarkus (application.properties) and let API Gateway forward them
       Cors:
         AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'"
@@ -317,8 +322,9 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Ref EcrRepositoryName
+      # max. deployments per user handled in backend-api-lambda
       LifecyclePolicy:
-        # first rule would only apply if updated image with same tag
+        # rule would only apply if updated image with same tag
         # --> old gets untagged
         # (only if user can update a deployment)
         LifecyclePolicyText: !Sub |
@@ -332,17 +338,6 @@ Resources:
                   "countType": "sinceImagePushed",
                   "countUnit": "days",
                   "countNumber": 1
-                },
-                "action": { "type": "expire" }
-              },
-              {
-                "rulePriority": 2,
-                "description": "Keep only 3 images per user prefix",
-                "selection": {
-                  "tagStatus": "tagged",
-                  "tagPrefixList": ["user-"],
-                  "countType": "imageCountMoreThan",
-                  "countNumber": ${MaxDeploymentsPerUser}
                 },
                 "action": { "type": "expire" }
               }

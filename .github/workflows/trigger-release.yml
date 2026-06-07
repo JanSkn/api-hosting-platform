@@ -41,7 +41,7 @@ jobs:
       - name: Configure AWS Staging Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          role-to-assume: arn:aws:iam::${{ env.AWS_STG_ACCOUNT_ID }}:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
 
       - name: Resolve and verify staged commit
@@ -109,7 +109,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Creating release $VERSION at $SHA ..."
-          gh release create "$VERSION" \
-            --target "$SHA" \
-            --title "$VERSION" \
-            --generate-notes
+          if [ "$IS_ROLLBACK" = "true" ]; then
+            RELEASE_BODY="### ⚠️ ROLLBACK RELEASE"$'\n\n'"This release was triggered manually to roll back the production environment to a known stable state."$'\n\n'"- **Target Commit (Stable):** \`$SHA\`"$'\n'"- **Triggered By:** @${{ github.actor }}"$'\n'"- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            
+            gh release create "$VERSION" \
+              --target "$SHA" \
+              --title "$VERSION" \
+              --notes "$RELEASE_BODY"
+          else
+            EXTRA_INFO="### 🚀 Release Metadata"$'\n\n'"- **Target Commit:** \`$SHA\`"$'\n'"- **Deployed By:** @${{ github.actor }}"$'\n'"- **Environment:** Production"$'\n\n'"---"$'\n'"### 📝 What's Changed"
+            
+            gh release create "$VERSION" \
+              --target "$SHA" \
+              --title "$VERSION" \
+              --notes "$EXTRA_INFO" \
+              --generate-notes
+          fi

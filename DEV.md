@@ -33,7 +33,7 @@ to deploy the stack locally (install the `.zip`files with `just lambda install-a
 - **`infra/`**: Contains SAM templates for the AWS architecture.
 - **`bootstrap/`**: Contains AWS account setup.
 - **`lambda/`**: Contains backend code running on AWS Lambda
-    **`common-utils/`** common utils and shared code.
+    - **`common-utils/`** common utils and shared code.
     - **`backend-api-lambda/`**: Contains the core platform logic.
     - **`sqs-dispatcher-lambda/`**: Takes build job from SQS queue and starts CodeBuild to build and push Dockerimage with usercode to ECR.
     - **`function-deployer-lambda/`**: Creates isolated Lambda functions per user from EventBridge event after CodeBuild finished in `sqs-dispatcher-lambda`.

@@ -223,11 +223,16 @@ const NewDeployment = () => {
                   <SelectContent>
                     <SelectItem value="javascript">JavaScript</SelectItem>
                     <SelectItem value="python">Python</SelectItem>
-                    <SelectItem value="java">Java</SelectItem>
+                    <SelectItem value="java" disabled>
+                      <span className="flex items-center gap-2">
+                        Java
+                        <span className="text-xs text-muted-foreground font-normal">Coming Soon</span>
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {language && (
+              {language && language !== "java" && (
                 <div className="space-y-2">
                   <Label>Version</Label>
                   <Select value={runtimeVersion} onValueChange={setRuntimeVersion}>

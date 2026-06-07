@@ -9,12 +9,9 @@ public class DeploymentEnums {
     LIVE
   }
 
+  // TODO: support JAVA_11/17/21 later
   /** Must be kept in sync with runtime options in Dockerfile templates */
   public enum Runtime {
-    JAVA_11,
-    JAVA_17,
-    JAVA_21,
-
     NODEJS_18_X,
     NODEJS_20_X,
     NODEJS_22_X,

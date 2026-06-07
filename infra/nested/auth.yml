@@ -5,7 +5,7 @@ Description: Auth Stack
 # for postman integration, see https://github.com/aws-samples/serverless-patterns/blob/main/cognito-httpapi/auth.yaml#L46
 
 Resources:
-  # TODO, change when user should verify email (sets user as CONFIRMED)
+  # TODO: change when user should verify email (sets user as CONFIRMED)
   # Note: without, localstack will send code in logs
   PreSignUpFunction:
     Type: AWS::Serverless::Function
@@ -19,11 +19,10 @@ Resources:
       Handler: index.handler
       Runtime: nodejs18.x
 
-  # see README here
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      # TODO, see above, no verification
+      # TODO: see above, no verification
       # AutoVerifiedAttributes:
       #   - email
       UsernameAttributes:
@@ -49,6 +48,12 @@ Resources:
       GenerateSecret: false
       SupportedIdentityProviders:
         - COGNITO
+
+  PreSignUpLogGroup:
+    ype: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${PreSignUpFunction}"
+      RetentionInDays: 7
     
 Outputs:
   UserPoolArn:

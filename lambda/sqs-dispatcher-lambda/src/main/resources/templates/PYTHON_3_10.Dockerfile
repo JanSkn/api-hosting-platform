@@ -1,6 +1,6 @@
 # see https://github.com/awslabs/aws-lambda-web-adapter/tree/main/examples/fastapi
 # list of images: https://gallery.ecr.aws/docker/library/python
-FROM public.ecr.aws/docker/library/python:3.11-slim-bookworm
+FROM public.ecr.aws/docker/library/python:3.10-slim-bookworm
 
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.1 /lambda-adapter /opt/extensions/lambda-adapter
 

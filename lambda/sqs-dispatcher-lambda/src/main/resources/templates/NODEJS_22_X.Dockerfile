@@ -1,6 +1,6 @@
 # see https://github.com/aws/aws-lambda-web-adapter/blob/main/examples/expressjs
 # list of images: https://gallery.ecr.aws/docker/library/node
-FROM public.ecr.aws/docker/library/node:20-slim
+FROM public.ecr.aws/docker/library/node:22-slim
 
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.1 /lambda-adapter /opt/extensions/lambda-adapter
 
