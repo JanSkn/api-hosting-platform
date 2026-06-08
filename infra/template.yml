@@ -87,7 +87,6 @@ Resources:
       CodeUri: ../lambda/backend-api-lambda/target/function.zip
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Timeout: 15
-      ReservedConcurrentExecutions: !If [isDeployedEnvironment, 10, 1]
       Architectures:
         - arm64
       MemorySize: !Ref LambdaMemory

@@ -9,6 +9,9 @@ mod web "web"
 lint-sam:
     cd infra && sam build && cfn-lint ".aws-sam/build/**/*.yaml"
 
+sam-changeset env :
+    cd infra && sam deploy --config-env {{ env }} --no-execute-changeset
+
 assume profile:
     aws-vault exec {{ profile }}
 
