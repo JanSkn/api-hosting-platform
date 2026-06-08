@@ -51,3 +51,5 @@ playwright-report
 
 # for e2e tests
 !sample-api.zip
+
+infra/.aws-sam/

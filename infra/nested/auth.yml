@@ -17,7 +17,7 @@ Resources:
           return event;
         };
       Handler: index.handler
-      Runtime: nodejs18.x
+      Runtime: nodejs24.x
 
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -30,11 +30,12 @@ Resources:
       LambdaConfig:
         PreSignUp: !GetAtt PreSignUpFunction.Arn
       Policies:
-        MinimumLength: 8
-        RequireNumbers: true
-        RequireLowerCase: true
-        RequireUpperCase: true
-        RequireSymbols: true
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireNumbers: true
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireSymbols: true
       Schema:
         - Name: email
           AttributeDataType: String
