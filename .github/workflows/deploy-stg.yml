@@ -29,7 +29,7 @@ jobs:
       AWS_STG_ACCOUNT_ID: "071308038858"
       SHA: ${{ github.event.workflow_run.head_sha }} # the exact commit the publish-main run built the artifact set for
       ARTIFACT_BUCKET: "apiforge-artifacts-071308038858" # artifacts for backend and frontend
-      FRONTEND_BUCKET: "apiforge-frontend-artifacts-071308038858" # frontend artifact copied from ARTIFACT_BUCKET
+      FRONTEND_BUCKET: "apiforge-frontend-071308038858" # frontend artifact copied from ARTIFACT_BUCKET
       BUILD_PREFIX: "s3://apiforge-artifacts-071308038858/builds/${{ github.event.workflow_run.head_sha }}"
 
     steps:
