@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCurrentUser, useDeleteAccount } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 import { Loader2 } from "lucide-react";
 
 const Settings = () => {
@@ -18,7 +19,12 @@ const Settings = () => {
     if (!confirm("Are you sure? This action is irreversible.")) return;
     deleteAccount.mutate(undefined, {
       onSuccess: () => navigate("/login"),
-      onError: () => toast({ title: "Failed to delete account", variant: "destructive" }),
+      onError: (error) =>
+        toast({
+          title: "Failed to delete account",
+          description: getErrorMessage(error),
+          variant: "destructive",
+        }),
     });
   };
 

@@ -2,18 +2,18 @@
 
 set -euo pipefail
 
-ENVIRONMENT="${1:?Environment required (local|stg|prod)}"
-AWS_REGION=$(grep -A 15 "\[${ENVIRONMENT}.deploy.parameters\]" samconfig.toml | grep "region =" | head -n 1 | cut -d'"' -f2 | xargs)
-STACK_NAME=$(grep -A 15 "\[${ENVIRONMENT}.deploy.parameters\]" samconfig.toml | grep "stack_name =" | head -n 1 | cut -d'"' -f2 | xargs)
+ENVIRONMENT="${1:?Environment required (local|testing|stg|prod)}"
+AWS_REGION="${2:?Region required}"
+STACK_NAME="${3:?Stack Name required}"
 
-if [[ "$ENVIRONMENT" == "local" ]]; then
+if [[ "$ENVIRONMENT" == "local" || "$ENVIRONMENT" == "testing" ]]; then
   AWS_CMD="awslocal"
 else
   AWS_CMD="aws"
 fi
 
-CONFIG_JS_FILE="public/config.js"
-LOCAL_CONFIG_JS_FILE="../web/$CONFIG_JS_FILE"
+CONFIG_JS_FILE="config.js" # after build in the dist/ folder, the config.js file will be at root level
+LOCAL_CONFIG_JS_FILE="../web/public/$CONFIG_JS_FILE"
 
 TEMP_CONFIG=$(mktemp)
 trap 'rm -f "$TEMP_CONFIG"' EXIT
@@ -47,17 +47,20 @@ window.APP_CONFIG = {
 };
 EOF
 
-if [[ "$ENVIRONMENT" == "local" ]]; then
+if [[ "$ENVIRONMENT" == "testing" ]]; then
+  echo "⏭️  Environment is 'testing' (CI). Skipping."
+elif [[ "$ENVIRONMENT" == "local" ]]; then
   echo "✅ Writing config.js locally to $LOCAL_CONFIG_JS_FILE"
   cp "$TEMP_CONFIG" "$LOCAL_CONFIG_JS_FILE"
 else
-  if ! aws s3 ls "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION" >/dev/null 2>&1; then
-    echo "Uploading to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."
-    aws s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" --region "$AWS_REGION"
-    echo "✅ Uploaded to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE"
-  else
-    echo "✅ File already exists in s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE, skipping upload"
-  fi
+  echo "Uploading fresh config to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE ..."
+  # --content-type is required: the source is an extension-less mktemp file, so
+  # aws s3 cp would default to binary/octet-stream. Combined with the
+  # X-Content-Type-Options: nosniff header from CloudFront, the browser would
+  # refuse to execute config.js as a <script>, leaving window.APP_CONFIG unset.
+  $AWS_CMD s3 cp "$TEMP_CONFIG" "s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE" \
+    --region "$AWS_REGION" --content-type "text/javascript"
+  echo "✅ Uploaded to s3://$FRONTEND_BUCKET_NAME/$CONFIG_JS_FILE"
 fi
 
 # file auto-deleted by trap

@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Bootstrap setup for APIForge. Must be run per environment (staging, prod) before deploying the main stack. 
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: "janskn/api-hosting-platform"
+  Environment:
+    Type: String
+    AllowedValues: [stg, prod]
+    Description: Account this bootstrap targets. The CI artifact bucket is only created for stg.
+
+Conditions:
+  isStg: !Equals [ !Ref Environment, stg ]
+
+Resources:
+  # deployments only allowed from GitHub Actions
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: ["a031c46782e6e6c662c2c87c76da9aa62ccabd8e", "6938fd4d98bab03faadb97b34396831e3780aea1"]
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: GitHubActionsDeploymentRole # name should match name in workflow yamls
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDCProvider
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringLike:
+                "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubRepo}:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  # stores immutable, commit-SHA-versioned build artifacts (builds/<sha>/...) and the
+  # staging markers (staged/<sha>, staged/latest). See publish-main.yml / deploy-stg.yml /
+  # deploy-prod.yml / trigger-release.yml. Production reads from here cross-account (ArtifactBucketPolicy).
+  # Lives in bootstrap (not the main infra stack) because publish-main.yml uploads to it before
+  # any deploy-stack has ever run — it must exist up front.
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Condition: isStg # only the staging account stores artifacts; prod reads from here cross-account, local/testing do not need it
+    Properties:
+      BucketName: !Sub apiforge-artifacts-${AWS::AccountId} # if renamed, update in the workflow yamls and in the artifact bucket policy below
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          # build artifacts are keyed by commit SHA and never overwritten. Expire them
+          # after 180 days; this also bounds how far back a prod rollback can reach
+          # (older versions can be rebuilt from their git tag).
+          - Id: ExpireOldBuilds
+            Status: Enabled
+            Prefix: builds/
+            ExpirationInDays: 180
+          # tidy up overwritten object versions (e.g. the staged/latest pointer)
+          - Id: CleanupOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+
+  ArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: isStg
+    Properties:
+      Bucket: !Ref ArtifactBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowProdGitHubRoleToRead
+            Effect: Allow
+            Principal:
+              # we need to give read access to the production GitHub Actions role as well, because we upload all artifacts to the staging bucket and prod needs to read from there for deployments, see deploy-prod.yml
+              AWS: "arn:aws:iam::591292939760:role/GitHubActionsDeploymentRole" # role name should match GitHubDeployRole above
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource: !Sub "arn:aws:s3:::apiforge-artifacts-${AWS::AccountId}/*"
+          - Sid: AllowProdGitHubRoleToList
+            Effect: Allow
+            Principal:
+              AWS: "arn:aws:iam::591292939760:role/GitHubActionsDeploymentRole" # role name should match GitHubDeployRole above
+            Action:
+              - s3:ListBucket
+            Resource: !Sub "arn:aws:s3:::apiforge-artifacts-${AWS::AccountId}"

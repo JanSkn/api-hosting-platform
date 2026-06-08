@@ -69,3 +69,75 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* ── Documentation Markdown ─────────────────────────────────────── */
+.docs-prose {
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-body: hsl(var(--muted-foreground));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-th-borders: hsl(var(--border));
+  --tw-prose-td-borders: hsl(var(--border));
+}
+
+/* Inline code – remove stray backtick pseudo-elements injected by Tailwind prose */
+.docs-prose :where(code):not(pre code) {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78em;
+  font-weight: 500;
+  padding: 0.15em 0.45em;
+  border-radius: 0.3rem;
+  border: 1px solid hsl(var(--border));
+}
+
+.docs-prose :where(code):not(pre code)::before,
+.docs-prose :where(code):not(pre code)::after {
+  content: "" !important;
+}
+
+/* Code blocks */
+.docs-prose pre {
+  background-color: hsl(217 33% 10%) !important;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+}
+
+.docs-prose pre code {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 0.82em;
+  font-family: "JetBrains Mono", monospace;
+  color: hsl(214 32% 91%);
+}
+
+/* Tables */
+.docs-prose table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.docs-prose th,
+.docs-prose td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem 1rem;
+}
+
+.docs-prose th {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  text-align: left;
+}
+
+.docs-prose td {
+  color: hsl(var(--muted-foreground));
+}

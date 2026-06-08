@@ -1,0 +1,44 @@
+name: Backend Build and Publish
+
+# Builds the Maven backend and uploads all three Lambda
+# artifacts as one immutable, commit-SHA-versioned set under builds/<sha>/.
+# The three lambdas always move together with the
+# same commit, so they share one version: the commit SHA.
+# We do this to share the same artifacts between staging and production.
+on:
+  workflow_call:
+
+jobs:
+  build-and-publish:
+    name: Build & Publish Backend
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-java-maven
+      - uses: ./.github/actions/setup-just
+
+      - name: Build all backend modules
+        run: just lambda install-all
+
+      - name: Configure AWS Staging Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      - name: Upload backend artifacts to Staging S3 bucket
+        run: |
+          AWS_STG_ACCOUNT_ID=071308038858
+          SHA="${{ github.sha }}"
+          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
+
+          # common-utils is not a Lambda (only a build dependency) -> not uploaded
+          for MODULE in backend-api-lambda sqs-dispatcher-lambda function-deployer-lambda; do
+            echo "Uploading $MODULE ($SHA)..."
+            aws s3 cp "lambda/$MODULE/target/function.zip" "$BUILD_PREFIX/$MODULE/function.zip"
+          done

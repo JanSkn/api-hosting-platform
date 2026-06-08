@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Copy, Check, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
+import type { Deployment, DeploymentStatus, DeploymentRuntime } from "@/api/deployments";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useDeleteDeployment } from "@/hooks/useDeployments";
@@ -10,17 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FAILED" | "LIVE";
-
-export interface Deployment {
-  deploymentId: string;
-  name: string;
-  status: DeploymentStatus;
-  apiUri: string;
-  createdAt: number;
-  runtime: "JAVA_17" | "NODEJS_18_X" | "PYTHON_3_12";
-}
-
 export const statusConfig: Record<string, { label: string; dotClass: string; textClass: string }> = {
   INITIALIZED: { label: "Initialized", dotClass: "bg-muted", textClass: "text-muted-foreground" },
   UPLOADING: { label: "Uploading", dotClass: "bg-status-building animate-pulse-dot", textClass: "text-status-building" },
@@ -29,10 +19,18 @@ export const statusConfig: Record<string, { label: string; dotClass: string; tex
   LIVE: { label: "Live", dotClass: "bg-status-live", textClass: "text-status-live" },
 };
 
-const runtimeLabels = {
+const runtimeLabels: Record<DeploymentRuntime, string> = {
   NODEJS_18_X: "Node.js 18",
+  NODEJS_20_X: "Node.js 20",
+  NODEJS_22_X: "Node.js 22",
+  JAVA_11: "Java 11",
   JAVA_17: "Java 17",
+  JAVA_21: "Java 21",
+  PYTHON_3_10: "Python 3.10",
+  PYTHON_3_11: "Python 3.11",
   PYTHON_3_12: "Python 3.12",
+  PYTHON_3_13: "Python 3.13",
+  PYTHON_3_14: "Python 3.14",
 };
 
 export function ProjectCard({ deployment }: { deployment: Deployment }) {

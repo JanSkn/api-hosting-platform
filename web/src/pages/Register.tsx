@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRegister } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -21,7 +22,12 @@ const Register = () => {
       { name, email, password },
       {
         onSuccess: () => navigate("/"),
-        onError: () => toast({ title: "Registration failed", variant: "destructive" }),
+        onError: (error) =>
+          toast({
+            title: "Registration failed",
+            description: getErrorMessage(error),
+            variant: "destructive",
+          }),
       }
     );
   };
@@ -49,7 +55,11 @@ const Register = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+              <p className="text-xs text-muted-foreground">
+                At least 8 characters, including an uppercase and a lowercase
+                letter, a number, and a symbol.
+              </p>
             </div>
             <Button type="submit" className="w-full gap-2" disabled={registerMutation.isPending}>
               {registerMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Create Account <ArrowRight className="h-4 w-4" /></>}

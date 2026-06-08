@@ -1,4 +1,3 @@
-# see https://docs.github.com/de/actions/tutorials/build-and-test-code/java-with-maven
 name: Backend CI checks
 
 on:
@@ -12,41 +11,55 @@ jobs:
   ci-checks:
     name: CI Checks – ${{ inputs.module-name }}
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read      
+
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-java-maven
       - uses: ./.github/actions/setup-just
+      - uses: mdgreenwald/mozilla-sops-action@v1.6.0
+        with:
+          version: '3.12.1'
+      - name: Install LocalStack CLI utilities
+        run: |
+          pip install awscli-local aws-sam-cli-local
 
-      - name: Local install of shared modules
-        run: just lambda install
+      - name: Create Build Artifact
+        # SAM template needs all lambda artifacts
+        run: just lambda install-all
 
       - name: Static Code Analysis
         run: |
           just ${{ inputs.module-name }} lint
           just ${{ inputs.module-name }} code-analysis
 
+      - name: Start LocalStack
+        # see https://getsops.io/docs/#encrypting-using-age override default lookup
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_SECRET_AGE_KEY }}
+        run: |
+          just run-localstack
+          echo "Waiting 10 seconds until container startup is ready..."
+          sleep 10
+
+      - name: Deploy Test Stack to LocalStack
+        run: just deploy-stack testing
+
       - name: Run Unit Tests
         run: just ${{ inputs.module-name }} unit-test
-
-      - name: Create Build Artifact
-        run: just ${{ inputs.module-name }} build
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: apiforge-${{ inputs.module-name }}-jar
-          path: ${{ inputs.module-name }}/target/*.jar
-          retention-days: 1
 
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ inputs.module-name }}
-          path: ${{ inputs.module-name }}/target/surefire-reports/
+          path: lambda/${{ inputs.module-name }}/target/surefire-reports/
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ inputs.module-name }}
-          path: ${{ inputs.module-name }}/target/site/jacoco/
+          path: lambda/${{ inputs.module-name }}/target/site/jacoco/

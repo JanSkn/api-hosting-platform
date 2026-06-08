@@ -12,7 +12,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors";
 import { useCreateDeployment } from "@/hooks/useDeployments";
+import type { DeploymentRuntime } from "@/api/deployments";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -30,21 +32,23 @@ const NewDeployment = () => {
   const [runtimeVersion, setRuntimeVersion] = useState("");
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
 
-  const versionOptions: Record<string, { value: string; label: string }[]> = {
+  const versionOptions: Record<string, { value: DeploymentRuntime; label: string }[]> = {
     javascript: [
-      { value: "node22", label: "Node.js 22.x" },
-      { value: "node20", label: "Node.js 20.x" },
-      { value: "node18", label: "Node.js 18.x" },
+      { value: "NODEJS_22_X", label: "Node.js 22.x" },
+      { value: "NODEJS_20_X", label: "Node.js 20.x" },
+      { value: "NODEJS_18_X", label: "Node.js 18.x" },
     ],
     python: [
-      { value: "python312", label: "Python 3.12" },
-      { value: "python311", label: "Python 3.11" },
-      { value: "python310", label: "Python 3.10" },
+      { value: "PYTHON_3_14", label: "Python 3.14" },
+      { value: "PYTHON_3_13", label: "Python 3.13" },
+      { value: "PYTHON_3_12", label: "Python 3.12" },
+      { value: "PYTHON_3_11", label: "Python 3.11" },
+      { value: "PYTHON_3_10", label: "Python 3.10" },
     ],
     java: [
-      { value: "java21", label: "Java 21 (LTS)" },
-      { value: "java17", label: "Java 17 (LTS)" },
-      { value: "java11", label: "Java 11 (LTS)" },
+      { value: "JAVA_21", label: "Java 21 (LTS)" },
+      { value: "JAVA_17", label: "Java 17 (LTS)" },
+      { value: "JAVA_11", label: "Java 11 (LTS)" },
     ],
   };
   const createDeployment = useCreateDeployment();
@@ -52,6 +56,7 @@ const NewDeployment = () => {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    if (repoUrl) return;
     setDragOver(false);
     const file = e.dataTransfer.files[0];
     if (file?.name.endsWith(".zip")) {
@@ -59,7 +64,7 @@ const NewDeployment = () => {
        setSelectedFile(file);
        setRepoUrl("");
     }
-  }, []);
+  }, [repoUrl]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -68,6 +73,12 @@ const NewDeployment = () => {
       setSelectedFile(file);
       setRepoUrl("");
     }
+  };
+
+  const clearFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFileName(null);
+    setSelectedFile(null);
   };
 
   const addEnvVar = () => setEnvVars([...envVars, { key: "", value: "" }]);
@@ -84,13 +95,18 @@ const NewDeployment = () => {
     createDeployment.mutate(
       {
         name: apiName,
-        runtime: language as "node" | "python" | "java",
+        runtime: runtimeVersion as DeploymentRuntime,
         source: selectedFile || repoUrl,
         envVars,
       },
       {
         onSuccess: (deployment) => navigate(`/deployment/${deployment.id}`),
-        onError: () => toast({ title: "Deployment failed", variant: "destructive" }),
+        onError: (error) =>
+          toast({
+            title: "Deployment failed",
+            description: getErrorMessage(error),
+            variant: "destructive",
+          }),
       }
     );
   };
@@ -117,25 +133,44 @@ const NewDeployment = () => {
                 onDrop={handleDrop}
                 className={cn(
                   "border-2 border-dashed rounded-lg p-10 text-center transition-colors cursor-pointer",
-                  dragOver ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30",
-                  fileName && "border-primary/50 bg-primary/5"
+                  dragOver && !repoUrl ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30",
+                  fileName && "border-primary/50 bg-primary/5",
+                  repoUrl && "cursor-not-allowed opacity-60"
                 )}
-                onClick={() => document.getElementById("file-upload")?.click()}
+                onClick={() => { if (!repoUrl) document.getElementById("file-upload")?.click(); }}
               >
                 {fileName ? (
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center gap-2 relative">
                     <FileArchive className="h-8 w-8 text-primary" />
                     <span className="text-sm font-medium text-foreground">{fileName}</span>
                     <span className="text-xs text-muted-foreground">Click to change</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={clearFile}
+                      className="mt-2 text-xs h-7 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" /> Remove
+                    </Button>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-2">
+                  <div className={cn(
+                    "flex flex-col items-center gap-2 transition-opacity",
+                    repoUrl && "opacity-40"
+                  )}>
                     <Upload className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground">Drop your .zip file here</span>
                     <span className="text-xs text-muted-foreground">or click to browse</span>
                   </div>
                 )}
-                <input id="file-upload" type="file" accept=".zip" className="hidden" onChange={handleFileSelect} />
+                <input 
+                  id="file-upload" 
+                  type="file" 
+                  accept=".zip" 
+                  className="hidden" 
+                  onChange={handleFileSelect} 
+                  disabled={!!repoUrl}
+                />
               </div>
 
               <div className="relative">
@@ -148,7 +183,20 @@ const NewDeployment = () => {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Github className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="repo-url" placeholder="https://github.com/user/repo" value={repoUrl} onChange={(e) => { setRepoUrl(e.target.value); if (e.target.value) setFileName(null); }} className="pl-9" />
+                    <Input 
+                      id="repo-url" 
+                      placeholder="https://github.com/user/repo" 
+                      value={repoUrl} 
+                      onChange={(e) => { 
+                        setRepoUrl(e.target.value); 
+                        if (e.target.value) {
+                          setFileName(null);
+                          setSelectedFile(null);
+                        }
+                      }} 
+                      disabled={!!fileName}
+                      className="pl-9" 
+                    />
                   </div>
                 </div>
               </div>
@@ -175,11 +223,16 @@ const NewDeployment = () => {
                   <SelectContent>
                     <SelectItem value="javascript">JavaScript</SelectItem>
                     <SelectItem value="python">Python</SelectItem>
-                    <SelectItem value="java">Java</SelectItem>
+                    <SelectItem value="java" disabled>
+                      <span className="flex items-center gap-2">
+                        Java
+                        <span className="text-xs text-muted-foreground font-normal">Coming Soon</span>
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {language && (
+              {language && language !== "java" && (
                 <div className="space-y-2">
                   <Label>Version</Label>
                   <Select value={runtimeVersion} onValueChange={setRuntimeVersion}>

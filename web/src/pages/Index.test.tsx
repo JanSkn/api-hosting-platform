@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import Index from "./Index";
 import * as useDeploymentsHook from "@/hooks/useDeployments";
-import type { Deployment } from "@/components/ProjectCard";
+import type { Deployment } from "@/api/deployments";
 
 // Mock the hook and components
 vi.mock("@/hooks/useDeployments", () => ({
@@ -59,8 +59,8 @@ describe("Index (Dashboard) page", () => {
 
   it("should render a list of deployments", () => {
     const mockDeployments = [
-      { deploymentId: "1", name: "Alpha API" },
-      { deploymentId: "2", name: "Beta API" },
+      { deploymentId: "1", name: "Alpha API", runtime: "NODEJS_18_X", status: "LIVE" },
+      { deploymentId: "2", name: "Beta API", runtime: "NODEJS_18_X", status: "LIVE" },
     ] as Deployment[];
 
     vi.mocked(useDeploymentsHook.useDeployments).mockReturnValue({

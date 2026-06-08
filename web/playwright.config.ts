@@ -24,8 +24,9 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:8080',
+    /* Base URL to use in actions like `await page.goto('/')`. Set E2E_BASE_URL to
+     * test against an already-deployed environment (e.g. the staging CloudFront URL). */
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:8080',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -39,10 +40,13 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:8080',
-    reuseExistingServer: !process.env.CI,
-  },
+  /* Run a local dev server before the tests ONLY when testing locally. When
+   * E2E_BASE_URL is set we test the already-deployed frontend, so no dev server. */
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:8080',
+        reuseExistingServer: !process.env.CI,
+      },
 });

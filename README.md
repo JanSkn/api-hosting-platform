@@ -44,6 +44,9 @@ For setup, see [this](DEV.md).
 
 APIForge is fully built on AWS and leverages a serverless architecture for scalability and efficiency.
 
+![Architecture](assets/architecture.drawio.svg)
+
+
 ### Core Components
 
 * **AWS Lambda**
@@ -62,6 +65,9 @@ APIForge is fully built on AWS and leverages a serverless architecture for scala
 
 * **AWS CodeBuild**
   * Builds Docker images from user code
+
+* **Amazon EventBridge**
+  * Start user API deployment when CodeBuild finished
 
 * **Amazon S3**
   * Stores uploaded source code and artifacts

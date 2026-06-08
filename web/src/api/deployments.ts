@@ -1,12 +1,31 @@
 import { apiFetch } from "./apiClient";
-import type { Deployment } from "@/components/ProjectCard";
+
+export interface Deployment {
+  deploymentId: string;
+  name: string;
+  status: DeploymentStatus;
+  apiUri: string;
+  createdAt: number;
+  runtime: DeploymentRuntime;
+}
 
 export interface BuildLog {
   time: string;
   msg: string;
 }
 
-export type DeploymentRuntime = "JAVA_17" | "NODEJS_18_X" | "PYTHON_3_12";
+export type DeploymentRuntime =
+  | "JAVA_11"
+  | "JAVA_17"
+  | "JAVA_21"
+  | "NODEJS_18_X"
+  | "NODEJS_20_X"
+  | "NODEJS_22_X"
+  | "PYTHON_3_10"
+  | "PYTHON_3_11"
+  | "PYTHON_3_12"
+  | "PYTHON_3_13"
+  | "PYTHON_3_14";
 export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FAILED" | "LIVE";
 
 export interface CreateDeploymentRequest {

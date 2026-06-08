@@ -68,7 +68,7 @@ describe("useCreateDeployment hook", () => {
 
     await result.current.mutateAsync({
       name: "test-api",
-      runtime: "node",
+      runtime: "NODEJS_18_X",
       source: "https://github.com/user/repo",
       envVars: [],
     });

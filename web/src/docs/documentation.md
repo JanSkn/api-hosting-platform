@@ -2,33 +2,79 @@
 
 ## Getting Started
 
-Deploy your first API in under a minute. Upload a `.zip` file containing your handler code or import directly from a public GitHub repository. **APIForge** will automatically build a container image and deploy it to a publicy available URL.
+Deploy your first API in under a minute. Upload a `.zip` file containing your handler code or import directly from a public GitHub repository. **APIForge** will automatically build, optimize, and deploy your application to a publicly available URL.
 
-## Supported Runtimes
+## Supported Runtimes & Frameworks
 
-- **Node.js 20.x** — CommonJS & ESM supported
-- **Python 3.10/3.11/3.12/3.13/3.14** 
-    - Supported framework: FastAPI
-    - Installer checks in this order: `requirements.txt` > `pyproject.toml`
-    - Note: Only essential build tools are installed; additional system libraries (e.g., `libqv-dev`) are not supported at the moment
+### Node.js (v18/v20/v22)
+
+* **Supported:** Any HTTP framework (Express, Fastify, Koa, NestJS, etc.), using both CommonJS and ESM.
+* **Port Configuration:** Your application must listen on the port `8080`.
+
+### Python (v3.10/v3.11/v3.12/v3.13/v3.14)
+
+* **Supported Framework:** FastAPI (or any ASGI-compatible framework).
+* **Build System:** Dependencies are resolved automatically via `requirements.txt` or `pyproject.toml`.
+* **System Libraries:** A standard build environment (`build-essential`) is provided. Custom OS-level libraries (like `ffmpeg` or special database drivers that require `apt-get`) are currently not supported.
+
+---
 
 ## Project Structure
 
+To ensure APIForge can run your application without any code changes, your project must follow these simple structural conventions:
+
+### Node.js Setup
+
+1. Your **`package.json`** (and ideally `package-lock.json`) must be in the **root directory**.
+2. Your main entry point file must be named **`index.js`** and located in the root directory.
+3. Your server must listen on `process.env.PORT`.
+
+```javascript
+// index.js Example
+const express = require('express');
+const app = express();
+const port = 8080;
+
+app.get('/', (req, res) => res.send('Hello from ApiForge!'));
+
+app.listen(port, () => console.log(`Server running on port ${port}`));
+
 ```
-my-api/
-├── handler.js    # Entry point (Node.js)
-├── package.json  # Dependencies
-└── .env.example  # Environment variables
+
+### Python Setup
+
+1. Your dependency file (**`requirements.txt`** or **`pyproject.toml`**) must be in the **root directory**.
+2. Your main application file must be named **`main.py`** and located in the root directory.
+3. Inside `main.py`, your FastAPI instance variable must be named **`app`**.
+
+```python
+# main.py Example
+from fastapi import FastAPI
+
+app = FastAPI() # Variable must be named 'app'
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from ApiForge!"}
+
 ```
+
+---
 
 ## Environment Variables
 
-Define environment variables in the deployment settings. They are encrypted at rest and injected into your function at runtime. Never commit secrets to your repository.
+You can define custom environment variables directly in your project's deployment settings on the APIForge dashboard.
+
+* All variables are encrypted at rest and injected into your runtime environment automatically.
+* **Never** commit secrets, passwords, or `.env` files to your repository.
+* **Note for Node.js:** The `PORT` variable is reserved by the platform and automatically managed for you.
+
+---
 
 ## API Limits
 
-| Resource | Limit |
-|---|---|
-| Request timeout | 30 seconds |
-| Payload size | 6 MB |
-| Concurrent executions | 1,000 |
+| Resource | Limit | Description |
+| --- | --- | --- |
+| Request Timeout | 30 seconds | Maximum time your API has to respond to an incoming request. |
+| Payload Size | 6 MB | Maximum size for incoming HTTP request bodies and responses. |
+| Concurrency | 1,000 | Maximum number of simultaneous requests handled before throttling. |

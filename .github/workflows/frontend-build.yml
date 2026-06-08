@@ -1,0 +1,51 @@
+name: Frontend Build and Publish
+
+# Builds the frontend and uploads one immutable,
+# commit-SHA-versioned artifact under builds/<sha>/frontend.zip.
+# We upload to the staging artifacts bucket (not the web bucket directly) so that
+# 1) we do not skip the stg -> prod promotion flow, and
+# 2) we can roll back to a previous version in prod.
+on:
+  workflow_call:
+
+jobs:
+  build-and-publish:
+    name: Build & Publish Frontend
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-just
+      - uses: ./.github/actions/setup-node
+        with:
+          module-name: web
+
+      - name: Configure AWS Staging Credentials (OIDC) for Code Artifacts
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      - name: Install dependencies
+        run: just web install
+
+      - name: Build
+        run: just web build
+
+      - name: Upload frontend artifact to S3
+        run: |
+          AWS_STG_ACCOUNT_ID=071308038858
+          SHA="${{ github.sha }}"
+          BUILD_PREFIX="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID/builds/$SHA"
+
+          echo "Zipping content of web/dist/..."
+          cd web/dist
+          zip -r ../../frontend.zip .
+          cd ../..
+
+          echo "Uploading frontend ($SHA)..."
+          aws s3 cp frontend.zip "$BUILD_PREFIX/frontend.zip"

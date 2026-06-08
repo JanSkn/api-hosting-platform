@@ -45,12 +45,7 @@ export function useBuildLogs(id: string) {
   });
 }
 
-function mapRuntime(runtime: string): DeploymentRuntime {
-  if (runtime === "node" || runtime === "javascript") return "NODEJS_18_X";
-  if (runtime === "java") return "JAVA_17";
-  if (runtime === "python") return "PYTHON_3_12";
-  return "NODEJS_18_X";
-}
+
 
 /**
  * Creates a deployment (initialize -> status:UPLOADING -> upload-url -> upload -> trigger).
@@ -61,7 +56,7 @@ export function useCreateDeployment() {
   return useMutation({
     mutationFn: async (data: {
       name: string;
-      runtime: "node" | "python" | "java";
+      runtime: DeploymentRuntime;
       source: File | string;
       envVars: { key: string; value: string }[];
     }) => {
@@ -73,7 +68,7 @@ export function useCreateDeployment() {
         // 1. Initialize
         const { deploymentId } = await initializeDeployment({
           name: data.name,
-          runtime: mapRuntime(data.runtime),
+          runtime: data.runtime,
           githubUrl: isGithub ? (data.source as string) : undefined,
         });
 

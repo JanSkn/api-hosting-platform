@@ -1,5 +1,5 @@
 import { Amplify } from "aws-amplify";
-import { config, isLocal } from "../config";
+import { config, isLocalStack } from "../config";
 
 export const configureAmplify = () => {
   Amplify.configure({
@@ -7,7 +7,7 @@ export const configureAmplify = () => {
       Cognito: {
         userPoolId: config.USER_POOL_ID,
         userPoolClientId: config.USER_POOL_CLIENT_ID,
-        ...(isLocal ? {
+        ...(isLocalStack ? {
           userPoolEndpoint: "http://localhost:4566",
           region: config.AWS_REGION,
         } : {

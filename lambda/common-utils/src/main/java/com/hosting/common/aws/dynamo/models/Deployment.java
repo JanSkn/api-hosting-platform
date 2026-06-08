@@ -23,7 +23,6 @@ public class Deployment {
   private String githubUrl; // if user uploads from GH instead of zip
   private long createdAt; // Epoch seconds
 
-  @SuppressWarnings("PMD.UnnecessaryConstructor")
   public Deployment() {
     // default constructor required by DynamoDB Enhanced Client for mapping
   }

@@ -3,6 +3,23 @@ import { getApiBaseUrl } from "@/config";
 import { getCorrelationId, setCorrelationId } from "./correlationId";
 
 /**
+ * Error thrown for non-2xx API responses. Carries the HTTP status and, when the
+ * backend returns a JSON body of the shape { error, message }, the machine-readable
+ * `code` and the human-readable `message`.
+ */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/**
  * Authenticated fetch wrapper.
  * Automatically attaches the Amplify ID-token as Bearer Authorization header.
  * Throws on non-2xx responses.
@@ -43,7 +60,22 @@ export async function apiFetch(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body || res.statusText}`);
+    let message = body || res.statusText;
+    let code: string | undefined;
+
+    // The backend returns errors as JSON { error: "<CODE>", message: "<text>" }.
+    // Prefer the human-readable message so the UI can show something useful.
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && typeof parsed === "object") {
+        message = parsed.message || parsed.error || message;
+        code = typeof parsed.error === "string" ? parsed.error : undefined;
+      }
+    } catch {
+      // Body wasn't JSON – fall back to the raw text / status text.
+    }
+
+    throw new ApiError(res.status, message, code);
   }
 
   return res;

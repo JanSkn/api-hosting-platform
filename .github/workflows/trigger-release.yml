@@ -1,0 +1,127 @@
+name: Create Release
+
+# Manually create a versioned Release + git tag pointing at a commit that already
+# passed staging. Publishing the Release triggers deploy-prod.yml.
+#
+# Default target is the latest staged commit (staged/latest). For a rollback,
+# pass an older staged commit SHA explicitly.
+on:
+  workflow_dispatch:
+    inputs:
+      is_rollback:
+        description: '⚠️ Rollback to previous stable version?'
+        type: boolean
+        required: false
+        default: false
+      rollback_sha:
+        description: 'ONLY IF ROLLBACK: Stable commit SHA to return to.'
+        type: string
+        required: false
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write # read the staging bucket via OIDC
+      contents: write # create the tag + release
+
+    # only authorized users can trigger release with GitHub environment protection rule
+    environment: release-gate
+
+    env:
+      AWS_STG_ACCOUNT_ID: "071308038858"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the tag can point at any staged commit
+
+      - name: Configure AWS Staging Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_STG_ACCOUNT_ID }}:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
+          aws-region: eu-central-1
+
+      - name: Resolve and verify staged commit
+        run: |
+          BUCKET="s3://apiforge-artifacts-$AWS_STG_ACCOUNT_ID"
+          IS_ROLLBACK_INPUT="${{ github.event.inputs.is_rollback }}"
+          ROLLBACK_SHA_INPUT="${{ github.event.inputs.rollback_sha }}"
+
+          if [ "$IS_ROLLBACK_INPUT" = "true" ] && [ -z "$ROLLBACK_SHA_INPUT" ]; then
+            echo "❌ ERROR: 'Is Rollback' checked, but no SHA passed."
+            exit 1
+          fi
+
+          if [ "$IS_ROLLBACK_INPUT" = "false" ] && [ -n "$ROLLBACK_SHA_INPUT" ]; then
+            echo "❌ ERROR: SHA passed, but 'Is Rollback' not checked."
+            echo "To deploy the latest staging version, leave empty."
+            exit 1
+          fi
+
+          # resolve SHA
+          if [ "$IS_ROLLBACK_INPUT" = "true" ]; then
+            echo "Rollback mode ..."
+            SHA="$ROLLBACK_SHA_INPUT"
+            echo "IS_ROLLBACK=true" >> "$GITHUB_ENV"
+          else
+            echo "Standard Release: Get latest version from Staging..."
+            SHA=$(aws s3 cp "$BUCKET/staged/latest" - 2>/dev/null | tr -d '[:space:]' || true)
+            if [ -z "$SHA" ]; then
+              echo "❌ ERROR: No 'staged/latest' pointer found in S3."
+              exit 1
+            fi
+            echo "IS_ROLLBACK=false" >> "$GITHUB_ENV"
+          fi
+
+          echo "Verifying $SHA passed staging ..."
+          if ! aws s3 ls "$BUCKET/staged/$SHA" >/dev/null 2>&1; then
+            echo "❌ ERROR: Commit $SHA has not passed Staging gate (Marker missing in S3)."
+            exit 1
+          fi
+
+          if ! git cat-file -e "${SHA}^{commit}" 2>/dev/null; then
+            echo "❌ ERROR: Commit $SHA does not exist in Git history."
+            exit 1
+          fi
+
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+          echo "✅ Commit verified: $SHA"
+
+      - name: Generate Version Name
+        run: |
+          export TZ="Europe/Berlin"
+          TIMESTAMP=$(date +'%Y.%m.%d-%H%M')
+          
+          if [ "$IS_ROLLBACK" = "true" ]; then
+            VERSION="v${TIMESTAMP}-rollback"
+          else
+            VERSION="v${TIMESTAMP}"
+          fi
+          
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Generated Release Name: $VERSION"
+
+      - name: Create GitHub Release + tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Creating release $VERSION at $SHA ..."
+          if [ "$IS_ROLLBACK" = "true" ]; then
+            RELEASE_BODY="### ⚠️ ROLLBACK RELEASE"$'\n\n'"This release was triggered manually to roll back the production environment to a known stable state."$'\n\n'"- **Target Commit (Stable):** \`$SHA\`"$'\n'"- **Triggered By:** @${{ github.actor }}"$'\n'"- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            
+            gh release create "$VERSION" \
+              --target "$SHA" \
+              --title "$VERSION" \
+              --notes "$RELEASE_BODY"
+          else
+            EXTRA_INFO="### 🚀 Release Metadata"$'\n\n'"- **Target Commit:** \`$SHA\`"$'\n'"- **Deployed By:** @${{ github.actor }}"$'\n'"- **Environment:** Production"$'\n\n'"---"$'\n'"### 📝 What's Changed"
+            
+            gh release create "$VERSION" \
+              --target "$SHA" \
+              --title "$VERSION" \
+              --notes "$EXTRA_INFO" \
+              --generate-notes
+          fi

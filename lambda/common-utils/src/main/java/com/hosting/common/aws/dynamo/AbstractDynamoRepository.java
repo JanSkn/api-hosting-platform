@@ -11,7 +11,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.IgnoreNullsMode;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 
 // DynamoDB exceptions are handled globally by DynamoDbExceptionMapper when called by
-// core-backend-lambda
+// backend-api-lambda
 public abstract class AbstractDynamoRepository<T> {
 
   protected DynamoDbTable<T> table;
@@ -19,6 +19,8 @@ public abstract class AbstractDynamoRepository<T> {
   protected AbstractDynamoRepository() {
     // Required by CDI (Quarkus) for proxy generation
   }
+
+  protected abstract String getTableName();
 
   // We inject the DynamoDbEnhancedClient in the concrete subclass rather than here
   // because CDI (Quarkus) creates beans from concrete classes. Additionally, the concrete class
