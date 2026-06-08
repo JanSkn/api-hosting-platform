@@ -117,13 +117,13 @@ jobs:
 
       - name: Smoke Test
         run: |
-          APID_ID=$(aws cloudformation describe-stacks \
+          API_ID=$(aws cloudformation describe-stacks \
             --stack-name "apiforge-stg" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiId'].OutputValue" \
             --output text)
 
           echo "Checking health endpoint..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APID_ID.execute-api.eu-central-1.amazonaws.com/stg/api/v1/health")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$API_ID.execute-api.eu-central-1.amazonaws.com/stg/api/v1/health")
 
           if [ "$STATUS" -ne 200 ]; then
             echo "❌ ERROR: Smoke Test failed - API responded with status $STATUS"
