@@ -19,7 +19,7 @@ Globals:
       # global environment variables for all lambdas, must be set in GlobalConfig.java in common-utils
       Variables:
         ENV: !Ref Environment
-        _AWS_REGION: !Ref AwsRegion # AWS_REGION is reserved
+        SYSTEM_AWS_REGION: !Ref AwsRegion # AWS_REGION is reserved
         LOG_LEVEL: "INFO" # renaming this requires renaming in log4j2.xml as well
 
 Parameters:
