@@ -354,6 +354,18 @@ Resources:
             ]
           }
 
+  Statement:
+  - Sid: AllowLambdaServiceToPullImages
+    Effect: Allow
+    Principal:
+      Service: lambda.amazonaws.com
+    Action:
+      - ecr:BatchGetImage
+      - ecr:GetDownloadUrlForLayer
+    Condition:
+      StringLike:
+        aws:sourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*"
+
   # Execution role assigned to every user-deployed Lambda (app-*). The function-deployer
   # hardcodes this exact role name (LambdaDeploymentRepository.java: role/UserFunctionRole).
   # Intentionally minimal: untrusted user code only gets CloudWatch Logs access.
@@ -405,6 +417,8 @@ Resources:
               Effect: Allow
               Action:
                 - lambda:CreateFunction
+                - lambda:GetFunction
+                - lambda:UpdateFunctionCode
                 - lambda:CreateFunctionUrlConfig
                 - lambda:AddPermission
               Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
