@@ -72,7 +72,7 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'"
         AllowHeaders: "'Accept,Authorization,Content-Type,X-Requested-With'"
-        AllowOrigin: !If [ isDeployedEnvironment, !Sub "https://${FrontendStack.Outputs.CloudFrontDistributionName}", "'*'" ]
+        AllowOrigin: !If [ isDeployedEnvironment, !Sub "'https://${FrontendStack.Outputs.CloudFrontDistributionName}'", "'*'" ]
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         AddDefaultAuthorizerToCorsPreflight: false
