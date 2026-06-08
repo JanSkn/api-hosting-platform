@@ -19,6 +19,15 @@ Resources:
       Handler: index.handler
       Runtime: nodejs24.x
 
+  UserPoolPreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PreSignUpFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn  
+      SourceAccount: !Ref AWS::AccountId
+
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
