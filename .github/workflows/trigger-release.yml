@@ -43,6 +43,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_STG_ACCOUNT_ID }}:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
+          audience: sts.amazonaws.com
 
       - name: Resolve and verify staged commit
         run: |

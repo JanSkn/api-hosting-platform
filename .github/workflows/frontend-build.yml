@@ -29,6 +29,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::071308038858:role/GitHubActionsDeploymentRole # role name should match the one in bootstrap/template.yml
           aws-region: eu-central-1
+          audience: sts.amazonaws.com
 
       - name: Install dependencies
         run: just web install
