@@ -6,7 +6,7 @@ import software.amazon.awssdk.regions.Region;
 public final class GlobalConfig extends BaseConfig {
 
   public static final String ENVIRONMENT = getOrThrow("ENV");
-  public static final Region AWS_REGION = Region.of(getOrThrow("AWS_REGION"));
+  public static final Region AWS_REGION = Region.of(getOrThrow("_AWS_REGION"));
   public static final LambdaEnvType LAMBDA_ENVIRONMENT =
       LambdaEnvType.valueOf(getOrThrow("LAMBDA_ENVIRONMENT"));
 

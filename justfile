@@ -6,6 +6,9 @@ mod sqs-dispatcher-lambda "lambda/sqs-dispatcher-lambda"
 mod function-deployer-lambda "lambda/function-deployer-lambda"
 mod web "web"
 
+lint-sam:
+    cd infra && sam build && cfn-lint ".aws-sam/build/**/*.yaml"
+
 assume profile:
     aws-vault exec {{ profile }}
 

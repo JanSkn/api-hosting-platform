@@ -5,7 +5,7 @@ Description: Bootstrap setup for APIForge. Must be run per environment (staging,
 Parameters:
   GitHubRepo:
     Type: String
-    Default: "janskn/api-hosting-platform"
+    Default: "JanSkn/api-hosting-platform" # case sensitive
   Environment:
     Type: String
     AllowedValues: [stg, prod]
@@ -47,6 +47,8 @@ Resources:
   # any deploy-stack has ever run — it must exist up front.
   ArtifactBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Condition: isStg # only the staging account stores artifacts; prod reads from here cross-account, local/testing do not need it
     Properties:
       BucketName: !Sub apiforge-artifacts-${AWS::AccountId} # if renamed, update in the workflow yamls and in the artifact bucket policy below

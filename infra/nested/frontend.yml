@@ -25,6 +25,7 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub apiforge-frontend-${AWS::AccountId} # if renamed, update in the workflow yamls as well
       BucketEncryption:

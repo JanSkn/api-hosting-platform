@@ -43,54 +43,79 @@ jobs:
             function-deployer:
               - 'lambda/function-deployer-lambda/**'
 
-  run-common-utils-ci-checks:
+  run-infra-ci-checks:
     needs: detect-code-changes
+    if: needs.detect-code-changes.outputs.core-infra-changed == 'true'
+    uses: ./.github/workflows/infra-ci.yml
+
+  run-common-utils-ci-checks:
+    needs: [detect-code-changes, run-infra-ci-checks]
     if: |
-      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      always() &&
+      (needs.run-infra-ci-checks.result == 'success' || needs.run-infra-ci-checks.result == 'skipped') &&
+      (
+        needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+        needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      )
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: common-utils
     secrets: inherit
 
   run-sqs-dispatcher-ci-checks:
-    needs: detect-code-changes
+    needs: [detect-code-changes, run-infra-ci-checks]
     if: |
-      needs.detect-code-changes.outputs.sqs-dispatcher-changed == 'true' ||
-      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      always() &&
+      (needs.run-infra-ci-checks.result == 'success' || needs.run-infra-ci-checks.result == 'skipped') &&
+      (
+        needs.detect-code-changes.outputs.sqs-dispatcher-changed == 'true' ||
+        needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+        needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      )
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: sqs-dispatcher-lambda
     secrets: inherit
 
   run-function-deployer-ci-checks:
-    needs: detect-code-changes
+    needs: [detect-code-changes, run-infra-ci-checks]
     if: |
-      needs.detect-code-changes.outputs.function-deployer-changed == 'true' ||
-      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      always() &&
+      (needs.run-infra-ci-checks.result == 'success' || needs.run-infra-ci-checks.result == 'skipped') &&
+      (
+        needs.detect-code-changes.outputs.function-deployer-changed == 'true' ||
+        needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+        needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      )
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: function-deployer-lambda
     secrets: inherit
 
   run-backend-api-ci-checks:
-    needs: detect-code-changes
+    needs: [detect-code-changes, run-infra-ci-checks]
     if: |
-      needs.detect-code-changes.outputs.backend-api-changed == 'true' ||
-      needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
-      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      always() &&
+      (needs.run-infra-ci-checks.result == 'success' || needs.run-infra-ci-checks.result == 'skipped') &&
+      (
+        needs.detect-code-changes.outputs.backend-api-changed == 'true' ||
+        needs.detect-code-changes.outputs.common-utils-changed == 'true' ||
+        needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      )
     uses: ./.github/workflows/backend-ci.yml
     with:
       module-name: backend-api-lambda
     secrets: inherit
 
   run-frontend-ci-checks:
-    needs: detect-code-changes
+    needs: [detect-code-changes, run-infra-ci-checks]
     if: |
-      needs.detect-code-changes.outputs.frontend-changed == 'true' ||
-      needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      always() &&
+      (needs.run-infra-ci-checks.result == 'success' || needs.run-infra-ci-checks.result == 'skipped') &&
+      (
+        needs.detect-code-changes.outputs.frontend-changed == 'true' ||
+        needs.detect-code-changes.outputs.core-infra-changed == 'true'
+      )
     uses: ./.github/workflows/frontend-ci.yml
     with:
       module-name: web
