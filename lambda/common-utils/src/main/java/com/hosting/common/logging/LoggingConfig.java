@@ -26,11 +26,12 @@ public final class LoggingConfig {
 
   public static void putAll(Map<String, String> contextMap) {
     if (contextMap != null) {
-      contextMap.forEach((k, v) -> {
-        if (k != null && v != null) {
-          MDC.put(k, v);
-        }
-      });
+      contextMap.forEach(
+          (k, v) -> {
+            if (k != null && v != null) {
+              MDC.put(k, v);
+            }
+          });
     }
   }
 
