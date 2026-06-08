@@ -19,12 +19,18 @@ public final class LoggingConfig {
   }
 
   public static void put(String key, String value) {
-    MDC.put(key, value);
+    if (key != null && value != null) {
+      MDC.put(key, value);
+    }
   }
 
   public static void putAll(Map<String, String> contextMap) {
     if (contextMap != null) {
-      contextMap.forEach(MDC::put);
+      contextMap.forEach((k, v) -> {
+        if (k != null && v != null) {
+          MDC.put(k, v);
+        }
+      });
     }
   }
 
@@ -34,7 +40,9 @@ public final class LoggingConfig {
           "Keys and values must be pairs (even number of arguments)");
     }
     for (int i = 0; i < kvPairs.length; i += 2) {
-      MDC.put(kvPairs[i], kvPairs[i + 1]);
+      if (kvPairs[i] != null && kvPairs[i + 1] != null) {
+        MDC.put(kvPairs[i], kvPairs[i + 1]);
+      }
     }
   }
 
