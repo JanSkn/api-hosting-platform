@@ -318,6 +318,12 @@ Resources:
         PrivilegedMode: true # required für Docker builds          
       Source: # override in CodeBuildRepository to specific user code, but mandatory field
         Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            build:
+              commands:
+                - echo "Placeholder buildspec. Overridden during invocation."
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
