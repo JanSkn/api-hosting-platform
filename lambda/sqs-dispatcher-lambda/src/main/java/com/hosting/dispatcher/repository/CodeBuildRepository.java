@@ -28,10 +28,6 @@ public class CodeBuildRepository {
     this.eventBridgeClient = eventBridgeClient;
   }
 
-  public String generateImageTag(String userId, String deploymentId) {
-    return userId + "_" + deploymentId;
-  }
-
   public String startBuildJob(BuildMessage buildMessage, String imageTag) {
     LOGGER.info("Starting build job for runtime: {}", buildMessage.runtime());
 
