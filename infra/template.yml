@@ -311,10 +311,11 @@ Resources:
       Artifacts:
         Type: NO_ARTIFACTS
       Environment:
-        Type: LINUX_ARM_CONTAINER # architecture should match the architecture in UserLambdaConfig
+        # architecture should match the architecture in UserLambdaConfig
+        Type: LINUX_ARM_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: "aws/codebuild/amazonlinux2-aarch64-standard:3.0" # architecture should match the architecture in UserLambdaConfig
-        PrivilegedMode: true # required für Docker builds          
+        Image: "aws/codebuild/amazonlinux-aarch64-standard:2.0"
+        PrivilegedMode: true # required for Docker builds          
       Source: # override in CodeBuildRepository to specific user code, but mandatory field
         Type: NO_SOURCE
         BuildSpec: |
