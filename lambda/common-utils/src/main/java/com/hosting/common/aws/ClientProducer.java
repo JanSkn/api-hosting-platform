@@ -6,6 +6,8 @@ import jakarta.enterprise.inject.Produces;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 import software.amazon.awssdk.services.codebuild.CodeBuildClient;
 import software.amazon.awssdk.services.codebuild.CodeBuildClientBuilder;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
@@ -179,6 +181,27 @@ public class ClientProducer {
   @ApplicationScoped
   public LambdaClient lambdaClient() {
     LambdaClientBuilder builder = LambdaClient.builder().region(GlobalConfig.AWS_REGION);
+
+    if (GlobalConfig.isLocalStack()) {
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Produces an application-scoped CloudWatchLogsClient. It automatically configures the region and
+   * local endpoint overrides if running in a local environment. Used to manage the log groups of
+   * user-deployed Lambdas (retention, cleanup).
+   */
+  @Produces
+  @ApplicationScoped
+  public CloudWatchLogsClient cloudWatchLogsClient() {
+    CloudWatchLogsClientBuilder builder =
+        CloudWatchLogsClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocalStack()) {
       builder

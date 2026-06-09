@@ -371,8 +371,11 @@ Resources:
   # Execution role assigned to every user-deployed Lambda (app-*). The function-deployer
   # hardcodes this exact role name (LambdaDeploymentRepository.java: role/UserFunctionRole).
   # Intentionally minimal: untrusted user code only gets CloudWatch Logs access.
-
-  # TODO: retention period for user function logs/no logs at all?
+  #
+  # Log retention/cleanup for these functions is handled by the function-deployer at runtime
+  # (LambdaDeploymentRepository): it pre-creates each /aws/lambda/app-* log group with a short
+  # retention and deletes it on teardown. The retention permissions live on the FunctionDeployer
+  # role below (ManageUserFunctionLogGroups), not here.
   UserFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -435,6 +438,16 @@ Resources:
               Condition:
                 StringEquals:
                   iam:PassedToService: lambda.amazonaws.com
+        # manage the log groups of user functions: pre-create them with a short retention and
+        # delete them on teardown so user logs don't accrue CloudWatch storage cost forever
+        - Statement:
+            - Sid: ManageUserFunctionLogGroups
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:DeleteLogGroup
+                - logs:PutRetentionPolicy
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/app-*"
         # update deployment metadata (status, API URI)
         - DynamoDBCrudPolicy:
             TableName: !Ref DeploymentsMetadataTable

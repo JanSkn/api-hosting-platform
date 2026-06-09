@@ -21,7 +21,8 @@ public class FunctionDeployerHandler implements RequestHandler<Map<String, Objec
   public FunctionDeployerHandler() {
     ClientProducer clientProducer = new ClientProducer();
     LambdaDeploymentRepository lambdaRepository =
-        new LambdaDeploymentRepository(clientProducer.lambdaClient());
+        new LambdaDeploymentRepository(
+            clientProducer.lambdaClient(), clientProducer.cloudWatchLogsClient());
     DeploymentService deploymentService =
         new DeploymentService(new DeploymentMetadataRepository(clientProducer.dynamoDbClient()));
 
