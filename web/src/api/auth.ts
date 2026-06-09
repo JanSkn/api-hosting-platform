@@ -14,6 +14,11 @@ export interface User {
 }
 
 export async function login(email: string, password: string): Promise<User> {
+  // Clear any lingering session first; Amplify's signIn throws
+  // "There is already a signed in user" otherwise, which would silently
+  // leave the previous user's session active.
+  await signOut();
+  await signIn({ username: email, password });
   return getCurrentUser() as Promise<User>;
 }
 
@@ -34,6 +39,9 @@ export async function register(
   });
   // After sign-up the user may need to confirm their email;
   // attempt sign-in so the session is active for the caller.
+  // Clear any lingering session first so signIn doesn't throw
+  // "There is already a signed in user".
+  await signOut();
   await signIn({ username: email, password });
   return getCurrentUser() as Promise<User>;
 }

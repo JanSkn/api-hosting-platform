@@ -227,12 +227,16 @@ public class DeploymentService {
     }
   }
 
+  public static String generateImageTag(String userId, String deploymentId) {
+    return userId + "_" + deploymentId;
+  }
+
   public void deleteDeployment(String userId, String deploymentId) {
     LOGGER.info("Deleting deployment", deploymentId);
 
     lambdaDeploymentRepository.deleteFunction(deploymentId);
 
-    String imageTag = userId + "_" + deploymentId;
+    String imageTag = generateImageTag(userId, deploymentId);
     LoggingConfig.put(LoggingConfig.IMAGE_TAG_MDC_KEY, imageTag);
     ecrRepository.deleteImage(imageTag);
 
