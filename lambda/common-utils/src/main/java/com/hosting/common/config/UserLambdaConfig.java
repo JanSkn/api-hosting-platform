@@ -10,6 +10,7 @@ public final class UserLambdaConfig {
   }
 
   public static final PackageType PACKAGE_TYPE = PackageType.IMAGE;
+  // architecture should match the codebuild architecture in the template.yml
   public static final Architecture ARCHITECTURE = Architecture.ARM64;
   public static final int TIMEOUT_SECONDS = 30;
   public static final int MEMORY_SIZE_MB = 128;

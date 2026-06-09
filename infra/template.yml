@@ -311,9 +311,9 @@ Resources:
       Artifacts:
         Type: NO_ARTIFACTS
       Environment:
-        Type: LINUX_CONTAINER
+        Type: LINUX_ARM_CONTAINER # architecture should match the architecture in UserLambdaConfig
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+        Image: "aws/codebuild/amazonlinux2-aarch64-standard:3.0" # architecture should match the architecture in UserLambdaConfig
         PrivilegedMode: true # required für Docker builds          
       Source: # override in CodeBuildRepository to specific user code, but mandatory field
         Type: NO_SOURCE
@@ -370,6 +370,8 @@ Resources:
   # Execution role assigned to every user-deployed Lambda (app-*). The function-deployer
   # hardcodes this exact role name (LambdaDeploymentRepository.java: role/UserFunctionRole).
   # Intentionally minimal: untrusted user code only gets CloudWatch Logs access.
+
+  # TODO: retention period for user function logs/no logs at all?
   UserFunctionRole:
     Type: AWS::IAM::Role
     Properties:
