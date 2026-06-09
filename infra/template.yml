@@ -332,19 +332,19 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Ref EcrRepositoryName
-      # RepositoryPolicyText:
-      #   Version: "2012-10-17"
-      #   Statement:
-      #     - Sid: AllowLambdaServiceToPullImages
-      #       Effect: Allow
-      #       Principal:
-      #         Service: lambda.amazonaws.com
-      #       Action:
-      #         - ecr:BatchGetImage
-      #         - ecr:GetDownloadUrlForLayer
-      #       Condition:
-      #         StringLike:
-      #           aws:sourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowLambdaServiceToPullImages
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+            Condition:
+              StringLike:
+                aws:sourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
       # max. deployments per user handled in backend-api-lambda
       LifecyclePolicy:
         # rule would only apply if updated image with same tag
@@ -366,18 +366,6 @@ Resources:
               }
             ]
           }
-
-  Statement:
-  - Sid: AllowLambdaServiceToPullImages
-    Effect: Allow
-    Principal:
-      Service: lambda.amazonaws.com
-    Action:
-      - ecr:BatchGetImage
-      - ecr:GetDownloadUrlForLayer
-    Condition:
-      StringLike:
-        aws:sourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*"
 
   # Execution role assigned to every user-deployed Lambda (app-*). The function-deployer
   # hardcodes this exact role name (LambdaDeploymentRepository.java: role/UserFunctionRole).
