@@ -39,6 +39,23 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-logging-json</artifactId>
     </dependency>
+
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5-mockito</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -54,6 +71,28 @@
           <compilerArgs>
             <arg>-parameters</arg>
           </compilerArgs>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <environmentVariables>
+            <ENV>testing</ENV>
+            <SYSTEM_AWS_REGION>us-east-1</SYSTEM_AWS_REGION>
+            <LAMBDA_ENVIRONMENT>BACKEND_API_LAMBDA</LAMBDA_ENVIRONMENT>
+            <COGNITO_USER_POOL_ID>mock-user-pool-id</COGNITO_USER_POOL_ID>
+            <DEPLOYMENTS_METADATA_TABLE>deployments-metadata</DEPLOYMENTS_METADATA_TABLE>
+            <MAX_DEPLOYMENTS_PER_USER>5</MAX_DEPLOYMENTS_PER_USER>
+            <ECR_REPOSITORY_URI>123456789012.dkr.ecr.us-east-1.amazonaws.com/user-apps</ECR_REPOSITORY_URI>
+            <BUILD_QUEUE_URL>https://sqs.us-east-1.amazonaws.com/123456789012/apiforge-build-jobs.fifo</BUILD_QUEUE_URL>
+            <USER_CODE_BUCKET>apiforge-usercode-123456789012</USER_CODE_BUCKET>
+            <USER_CODE_BUCKET_PREFIX>apiforge-user-code-uploads</USER_CODE_BUCKET_PREFIX>
+            <DOCKERFILE_TEMPLATE_BUCKET>apiforge-dockerfile-templates-123456789012</DOCKERFILE_TEMPLATE_BUCKET>
+            <CODEBUILD_PROJECT_NAME>apiforge-user-code-builder</CODEBUILD_PROJECT_NAME>
+            <LOG_LEVEL>INFO</LOG_LEVEL>
+            <ALLOWED_ORIGIN>http://localhost:8080</ALLOWED_ORIGIN>
+          </environmentVariables>
         </configuration>
       </plugin>
     </plugins>

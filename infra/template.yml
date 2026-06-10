@@ -12,6 +12,9 @@ Description: Backend and Frontend setup for APIForge.
 # ! Artifact S3 Bucket lies in bootstrap/template.yml.
 # It needs to be bootstrapped because it is part of the CI/CD pipeline before the first deployment.
 
+# Some resources have hardcoded custom names for easier reference in the CI/CD pipeline or for settings
+# the Lambda env variables before unit/integration tests
+
 Globals:
   Function:
     Runtime: java21
@@ -172,6 +175,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      BucketName: !Sub apiforge-usercode-${AWS::AccountId}
       # block any public access, only presigned URLs generated from backend api lambda
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -201,6 +205,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      BucketName: !Sub apiforge-dockerfile-templates-${AWS::AccountId}
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -209,6 +214,7 @@ Resources:
   BuildJobQueue:
     Type: AWS::SQS::Queue
     Properties:
+      QueueName: "apiforge-build-jobs.fifo"
       FifoQueue: true
       ContentBasedDeduplication: true
       VisibilityTimeout: 90
