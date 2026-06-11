@@ -13,7 +13,8 @@ Description: Backend and Frontend setup for APIForge.
 # It needs to be bootstrapped because it is part of the CI/CD pipeline before the first deployment.
 
 # Some resources have hardcoded custom names for easier reference in the CI/CD pipeline or for settings
-# the Lambda env variables before unit/integration tests
+# the Lambda env variables before unit/integration tests.
+# The env variables per lambda should be synced with the env variables in the respective pom file.
 
 Globals:
   Function:

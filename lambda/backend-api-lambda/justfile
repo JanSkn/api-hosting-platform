@@ -11,3 +11,6 @@ code-analysis:
 
 unit-test:
     ../mvnw {{ mvn_flags }} test
+
+integration-test:
+    ../mvnw {{ mvn_flags }} clean verify
