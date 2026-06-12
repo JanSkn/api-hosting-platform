@@ -108,7 +108,6 @@ public class DeploymentResource extends BaseResource {
   @Path("/{deploymentId}")
   public Response deleteDeployment(@PathParam("deploymentId") String deploymentId) {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
-    LOGGER.info("Deleting deployment");
 
     deploymentService.deleteDeployment(claims.getUserId(), deploymentId);
 

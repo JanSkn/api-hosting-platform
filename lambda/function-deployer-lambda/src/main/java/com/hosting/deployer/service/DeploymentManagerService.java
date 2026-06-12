@@ -24,7 +24,7 @@ public class DeploymentManagerService {
     String repositoryUri = EcrConfig.REPOSITORY_URI;
     String imageUri = repositoryUri + ":" + imageTag;
 
-    lambdaRepository.createFunction(deploymentId, imageUri);
+    lambdaRepository.createFunction(userId, deploymentId, imageUri);
     String functionUrl = lambdaRepository.setupFunctionUrl(deploymentId);
 
     deploymentService.setApiUri(userId, deploymentId, functionUrl);

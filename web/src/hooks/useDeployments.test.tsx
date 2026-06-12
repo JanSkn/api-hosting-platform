@@ -78,7 +78,8 @@ describe("useCreateDeployment hook", () => {
 
     // Should call initialize
     expect(api.initializeDeployment).toHaveBeenCalledWith(expect.objectContaining({
-      name: "test-api"
+      name: "test-api",
+      environmentVariables: [],
     }));
 
     // Should call trigger

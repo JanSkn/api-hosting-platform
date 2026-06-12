@@ -43,6 +43,9 @@ Parameters:
   EcrRepositoryName:
     Type: String
     Default: "user-apps"
+  ParameterStoreEnvVariablesPrefix:
+    Type: String
+    Default: "apiforge/users"
 
 Conditions:
   isDeployedEnvironment: !Or [ !Equals [ !Ref Environment, stg ], !Equals [ !Ref Environment, prod ] ]
@@ -119,6 +122,7 @@ Resources:
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
           DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
+          ENV_VARIABLES_PREFIX: !Ref ParameterStoreEnvVariablesPrefix
       Policies:
         # presigned upload URLs + storing/checking/deleting user code in S3
         # (Crud = Get/Head + Put + Delete + List, all needed across the deployment lifecycle)
@@ -132,18 +136,34 @@ Resources:
             QueueName: !GetAtt BuildJobQueue.QueueName
         # deleting a deployment / account: remove the user's Lambda, its ECR image and Cognito user
         - Statement:
-            - Sid: DeleteUserFunction
-              Effect: Allow
-              Action: lambda:DeleteFunction
-              Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
-            - Sid: DeleteUserImage
-              Effect: Allow
-              Action: ecr:BatchDeleteImage
-              Resource: !GetAtt EcrRepository.Arn
-            - Sid: DeleteUserAccount
-              Effect: Allow
-              Action: cognito-idp:AdminDeleteUser
-              Resource: !GetAtt AuthStack.Outputs.UserPoolArn
+          - Sid: DeleteUserFunction
+            Effect: Allow
+            Action: lambda:DeleteFunction
+            Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
+          - Sid: DeleteUserImage
+            Effect: Allow
+            Action: ecr:BatchDeleteImage
+            Resource: !GetAtt EcrRepository.Arn
+          - Sid: DeleteUserAccount
+            Effect: Allow
+            Action: cognito-idp:AdminDeleteUser
+            Resource: !GetAtt AuthStack.Outputs.UserPoolArn
+          - Sid: AdministrateUserEnvVariables
+            Effect: Allow
+            Action:
+              - "ssm:GetParameter"
+              - "ssm:GetParameters"
+              - "ssm:GetParametersByPath"
+              - "ssm:PutParameter"
+              - "ssm:DeleteParameter"
+              - "ssm:DeleteParameters"
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ParameterStoreEnvVariablesPrefix}/*"
+          - Sid: EncryptUserEnvVars
+            Effect: Allow
+            Action:
+              - "kms:Encrypt"
+              - "kms:GenerateDataKey*"
+            Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ssm"
 
   DeploymentsMetadataTable:
   # not AWS::Serverless:SimpleTable for secondary key
@@ -416,40 +436,55 @@ Resources:
             ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
             DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
             FUNCTION_URL_USER_ROLE_ARN: !GetAtt UserFunctionRole.Arn
+            ENV_VARIABLES_PREFIX: !Ref ParameterStoreEnvVariablesPrefix
       Policies:
-        # create the user's Lambda from the ECR image and expose it via a public Function URL
-        - Statement:
-            - Sid: CreateUserFunction
-              Effect: Allow
-              Action:
-                - lambda:CreateFunction
-                - lambda:GetFunction
-                - lambda:UpdateFunctionCode
-                - lambda:CreateFunctionUrlConfig
-                - lambda:AddPermission
-              Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
-        # allow handing the user-function execution role to the Lambda service on CreateFunction
-        - Statement:
-            - Sid: PassUserFunctionRole
-              Effect: Allow
-              Action: iam:PassRole
-              Resource: !GetAtt UserFunctionRole.Arn
-              Condition:
-                StringEquals:
-                  iam:PassedToService: lambda.amazonaws.com
-        # manage the log groups of user functions: pre-create them with a short retention and
-        # delete them on teardown so user logs don't accrue CloudWatch storage cost forever
-        - Statement:
-            - Sid: ManageUserFunctionLogGroups
-              Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:DeleteLogGroup
-                - logs:PutRetentionPolicy
-              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/app-*"
         # update deployment metadata (status, API URI)
         - DynamoDBCrudPolicy:
             TableName: !Ref DeploymentsMetadataTable
+        # create the user's Lambda from the ECR image and expose it via a public Function URL
+        - Statement:
+          - Sid: CreateUserFunction
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:GetFunction
+              - lambda:UpdateFunctionCode
+              - lambda:CreateFunctionUrlConfig
+              - lambda:AddPermission
+            Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:app-*"
+          # allow handing the user-function execution role to the Lambda service on CreateFunction
+          - Sid: PassUserFunctionRole
+            Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt UserFunctionRole.Arn
+            Condition:
+              StringEquals:
+                iam:PassedToService: lambda.amazonaws.com
+          # manage the log groups of user functions: pre-create them with a short retention and
+          # delete them on teardown so user logs don't accrue CloudWatch storage cost forever
+          - Sid: ManageUserFunctionLogGroups
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:DeleteLogGroup
+              - logs:PutRetentionPolicy
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/app-*"
+          # to set env variables per user lambda
+          # We use Systems Manager's Parameter Store here because it is cheaper
+          # than Secrets Manager and sufficient for that usecase
+          - Sid: InjectUserEnvVariables
+            Effect: Allow
+            Action:
+              - "ssm:GetParameter"
+              - "ssm:GetParameters"
+              - "ssm:GetParametersByPath"
+            # allow access only within users/
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ParameterStoreEnvVariablesPrefix}/*"
+          - Sid: DecryptUserEnvVariables
+            Effect: Allow
+            Action:
+              - "kms:Decrypt"
+            Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ssm"
 
   BackendAPILogGroup:
     Type: AWS::Logs::LogGroup
