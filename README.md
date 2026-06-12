@@ -71,11 +71,17 @@ APIForge is fully built on AWS and leverages a serverless architecture for scala
 * **Amazon EventBridge**
   * Start user API deployment when CodeBuild finished
 
+* **AWS AppSync**
+  * Stream build logs per deployment
+
 * **Amazon S3**
   * Stores uploaded source code and artifacts
 
 * **Amazon DynamoDB**
   * Stores metadata (deployments, users, status)
+
+* **AWS Systems Manager (Parameter Store)**
+  * Stores user-defines secrets per deployment
 
 * **Amazon Cognito**
   * Handles authentication and user management

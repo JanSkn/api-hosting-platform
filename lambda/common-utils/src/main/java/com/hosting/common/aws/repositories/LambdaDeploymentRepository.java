@@ -11,22 +11,25 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.DeleteLogGroupReques
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutRetentionPolicyRequest;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
+import software.amazon.awssdk.services.ssm.SsmClient;
 
 @ApplicationScoped
 public class LambdaDeploymentRepository {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LambdaDeploymentRepository.class);
 
-  // TODO: Retention for user-function logs.
   // Future feature: Provide users with the logs.
   private static final int LOG_RETENTION_DAYS = 1;
 
   private final LambdaClient lambdaClient;
+  private final SsmClient ssmClient;
   private final CloudWatchLogsClient logsClient;
 
   @Inject
-  public LambdaDeploymentRepository(LambdaClient lambdaClient, CloudWatchLogsClient logsClient) {
+  public LambdaDeploymentRepository(
+      LambdaClient lambdaClient, SsmClient ssmClient, CloudWatchLogsClient logsClient) {
     this.lambdaClient = lambdaClient;
+    this.ssmClient = ssmClient;
     this.logsClient = logsClient;
   }
 
@@ -39,9 +42,12 @@ public class LambdaDeploymentRepository {
     return "/aws/lambda/" + functionName;
   }
 
-  public void createFunction(String deploymentId, String imageUri) {
+  public void createFunction(String userId, String deploymentId, String imageUri) {
     String roleArn = UserLambdaConfig.FUNCTION_URL_ROLE_ARN;
     String functionName = getFunctionName(deploymentId);
+
+    // lazy-load: only required when creating a function
+    ParameterStoreRepository parameterStoreRepository = new ParameterStoreRepository(ssmClient);
 
     // Pre-create the log group. Otherwise Lambda auto-creates it on first
     // invocation with "never expire", and the logs of untrusted user code accrue storage cost
@@ -58,6 +64,9 @@ public class LambdaDeploymentRepository {
               .timeout(UserLambdaConfig.TIMEOUT_SECONDS)
               .memorySize(UserLambdaConfig.MEMORY_SIZE_MB)
               .architectures(UserLambdaConfig.ARCHITECTURE)
+              .environment(
+                  env ->
+                      env.variables(parameterStoreRepository.getUserEnvVars(userId, deploymentId)))
               .build());
       LOGGER.info("Created new lambda function: {}", functionName);
     } catch (Exception e) {
@@ -96,7 +105,6 @@ public class LambdaDeploymentRepository {
               .statementId("PublicFunctionInvokeAccess")
               .action("lambda:InvokeFunction")
               .principal("*")
-              .functionUrlAuthType(FunctionUrlAuthType.NONE)
               .build());
       LOGGER.info("Added public invoke permission to Function for {}", functionName);
 

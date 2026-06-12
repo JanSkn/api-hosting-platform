@@ -28,10 +28,17 @@ export type DeploymentRuntime =
   | "PYTHON_3_14";
 export type DeploymentStatus = "INITIALIZED" | "UPLOADING" | "IN_PROGRESS" | "FAILED" | "LIVE";
 
+export interface EnvironmentVariable {
+  key: string;
+  value: string;
+  isSecret: boolean;
+}
+
 export interface CreateDeploymentRequest {
   name: string;
   runtime: DeploymentRuntime;
   githubUrl?: string;
+  environmentVariables?: EnvironmentVariable[];
 }
 
 export interface CreateDeploymentResponse {

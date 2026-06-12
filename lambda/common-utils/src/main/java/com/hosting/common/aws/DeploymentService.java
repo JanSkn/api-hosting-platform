@@ -5,6 +5,7 @@ import com.hosting.common.aws.repositories.BuildQueueRepository;
 import com.hosting.common.aws.repositories.DeploymentMetadataRepository;
 import com.hosting.common.aws.repositories.EcrRepository;
 import com.hosting.common.aws.repositories.LambdaDeploymentRepository;
+import com.hosting.common.aws.repositories.ParameterStoreRepository;
 import com.hosting.common.aws.repositories.UserCodeRepository;
 import com.hosting.common.config.S3Config;
 import com.hosting.common.dto.CreateDeploymentRequest;
@@ -36,6 +37,7 @@ public class DeploymentService {
   public BuildQueueRepository buildQueue;
   public LambdaDeploymentRepository lambdaDeploymentRepository;
   public EcrRepository ecrRepository;
+  private ParameterStoreRepository parameterStoreRepository;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeploymentService.class);
 
@@ -45,12 +47,14 @@ public class DeploymentService {
       UserCodeRepository userCodeRepository,
       BuildQueueRepository jobQueueRepository,
       LambdaDeploymentRepository lambdaDeploymentRepository,
-      EcrRepository ecrRepository) {
+      EcrRepository ecrRepository,
+      ParameterStoreRepository parameterStoreRepository) {
     this.deploymentMetadata = deploymentRepository;
     this.userCode = userCodeRepository;
     this.buildQueue = jobQueueRepository;
     this.lambdaDeploymentRepository = lambdaDeploymentRepository;
     this.ecrRepository = ecrRepository;
+    this.parameterStoreRepository = parameterStoreRepository;
   }
 
   // for SQS dispatcher and Function deployer
@@ -106,6 +110,9 @@ public class DeploymentService {
     deployment.setStatus(Status.INITIALIZED);
 
     deploymentMetadata.put(deployment); // will fail if more than allowed deployments per user
+
+    parameterStoreRepository.createUserEnvVars(
+        request.environmentVariables(), userId, deploymentId);
 
     return deploymentId;
   }
@@ -232,7 +239,7 @@ public class DeploymentService {
   }
 
   public void deleteDeployment(String userId, String deploymentId) {
-    LOGGER.info("Deleting deployment", deploymentId);
+    LOGGER.info("Deleting deployment");
 
     lambdaDeploymentRepository.deleteFunction(deploymentId);
 
@@ -241,11 +248,12 @@ public class DeploymentService {
     ecrRepository.deleteImage(imageTag);
 
     deploymentMetadata.delete(userId, deploymentId);
+    parameterStoreRepository.deleteAllUserEnvVariables(userId);
     userCode.deleteUserCode(userId, deploymentId);
   }
 
   public void deleteDeployments(String userId) {
-    LOGGER.info("Deleting all deployments for user: {}", userId);
+    LOGGER.info("Deleting all deployments");
     Optional<List<Deployment>> deploymentsOpt = getDeployments(userId);
     if (deploymentsOpt.isPresent()) {
       for (Deployment deployment : deploymentsOpt.get()) {

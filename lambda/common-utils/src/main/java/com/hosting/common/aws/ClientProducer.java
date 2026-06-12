@@ -26,6 +26,8 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
+import software.amazon.awssdk.services.ssm.SsmClient;
+import software.amazon.awssdk.services.ssm.SsmClientBuilder;
 
 /**
  * Producer class that provides configured AWS SDK clients as injectable CDI beans. This allows
@@ -221,6 +223,25 @@ public class ClientProducer {
   @ApplicationScoped
   public EcrClient ecrClient() {
     EcrClientBuilder builder = EcrClient.builder().region(GlobalConfig.AWS_REGION);
+
+    if (GlobalConfig.isLocalStack()) {
+      builder
+          .endpointOverride(GlobalConfig.AWS_LOCAL_INTERNAL_ENDPOINT)
+          .credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Produces an application-scoped SsmClient. It automatically configures the region and local
+   * endpoint overrides if running in a local environment.
+   */
+  @Produces
+  @ApplicationScoped
+  public SsmClient ssmClient() {
+    SsmClientBuilder builder = SsmClient.builder().region(GlobalConfig.AWS_REGION);
 
     if (GlobalConfig.isLocalStack()) {
       builder

@@ -58,7 +58,7 @@ export function useCreateDeployment() {
       name: string;
       runtime: DeploymentRuntime;
       source: File | string;
-      envVars: { key: string; value: string }[];
+      envVars: { key: string; value: string; isSecret: boolean }[];
     }) => {
       // Start fresh correlation ID for each deployment flow
       clearCorrelationId();
@@ -70,6 +70,11 @@ export function useCreateDeployment() {
           name: data.name,
           runtime: data.runtime,
           githubUrl: isGithub ? (data.source as string) : undefined,
+          environmentVariables: data.envVars.map((env) => ({
+            key: env.key,
+            value: env.value,
+            isSecret: env.isSecret,
+          })),
         });
 
         // If it's a GitHub URL, the backend will handle the download and upload during trigger

@@ -16,9 +16,11 @@ import { getErrorMessage } from "@/lib/errors";
 import { useCreateDeployment } from "@/hooks/useDeployments";
 import type { DeploymentRuntime } from "@/api/deployments";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
-type EnvVar = { key: string; value: string };
+type EnvVar = { key: string; value: string; isSecret: boolean };
 
 const NewDeployment = () => {
   const navigate = useNavigate();
@@ -81,9 +83,10 @@ const NewDeployment = () => {
     setSelectedFile(null);
   };
 
-  const addEnvVar = () => setEnvVars([...envVars, { key: "", value: "" }]);
-  const updateEnvVar = (index: number, field: "key" | "value", val: string) => {
+  const addEnvVar = () => setEnvVars([...envVars, { key: "", value: "", isSecret: false }]);
+  const updateEnvVar = (index: number, field: "key" | "value" | "isSecret", val: string | boolean) => {
     const updated = [...envVars];
+    // @ts-ignore
     updated[index][field] = val;
     setEnvVars(updated);
   };
@@ -259,14 +262,35 @@ const NewDeployment = () => {
                         <TableRow>
                           <TableHead className="h-9 text-xs">Key</TableHead>
                           <TableHead className="h-9 text-xs">Value</TableHead>
+                          <TableHead className="h-9 text-xs w-16 text-center">
+                            <span className="flex items-center justify-center gap-1">
+                              Secret
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="h-3.5 w-2.5 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">Securely encrypts and hides this variable in deployment logs.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </span>
+                          </TableHead>
                           <TableHead className="h-9 w-10" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {envVars.map((env, i) => (
                           <TableRow key={i}>
-                            <TableCell className="p-1.5"><Input placeholder="API_KEY" value={env.key} onChange={(e) => updateEnvVar(i, "key", e.target.value)} className="h-8 text-xs font-mono" /></TableCell>
+                            <TableCell className="p-1.5"><Input placeholder="KEY" value={env.key} onChange={(e) => updateEnvVar(i, "key", e.target.value)} className="h-8 text-xs font-mono" /></TableCell>
                             <TableCell className="p-1.5"><Input placeholder="value" value={env.value} onChange={(e) => updateEnvVar(i, "value", e.target.value)} className="h-8 text-xs font-mono" /></TableCell>
+                            <TableCell className="p-1.5 text-center">
+                              <span className="flex justify-center">
+                                <Switch
+                                  checked={env.isSecret}
+                                  onCheckedChange={(checked) => updateEnvVar(i, "isSecret", checked)}
+                                />
+                              </span>
+                            </TableCell>
                             <TableCell className="p-1.5"><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeEnvVar(i)}><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
                           </TableRow>
                         ))}
@@ -303,7 +327,9 @@ const NewDeployment = () => {
                 {envVars.length > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Env Variables</span>
-                    <span className="text-foreground">{envVars.length} defined</span>
+                    <span className="text-foreground">
+                      {envVars.length} defined ({envVars.filter((e) => e.isSecret).length} secret)
+                    </span>
                   </div>
                 )}
               </div>
