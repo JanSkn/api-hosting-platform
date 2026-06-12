@@ -39,9 +39,8 @@ public class LambdaDeploymentRepository {
     return "/aws/lambda/" + functionName;
   }
 
-  public void createFunction(String deploymentId, String imageUri, String accountId) {
-    // role name must match the one in template.yml
-    String roleArn = String.format("arn:aws:iam::%s:role/UserFunctionRole", accountId);
+  public void createFunction(String deploymentId, String imageUri) {
+    String roleArn = UserLambdaConfig.FUNCTION_URL_ROLE_ARN;
     String functionName = getFunctionName(deploymentId);
 
     // Pre-create the log group. Otherwise Lambda auto-creates it on first
@@ -81,6 +80,7 @@ public class LambdaDeploymentRepository {
 
       LOGGER.info("Created new Function URL: {}", url);
 
+      // see https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html; both permissions required
       lambdaClient.addPermission(
           AddPermissionRequest.builder()
               .functionName(functionName)
@@ -90,6 +90,15 @@ public class LambdaDeploymentRepository {
               .functionUrlAuthType(FunctionUrlAuthType.NONE)
               .build());
       LOGGER.info("Added public access permission to Function URL for {}", functionName);
+      lambdaClient.addPermission(
+          AddPermissionRequest.builder()
+              .functionName(functionName)
+              .statementId("PublicFunctionInvokeAccess")
+              .action("lambda:InvokeFunction")
+              .principal("*")
+              .functionUrlAuthType(FunctionUrlAuthType.NONE)
+              .build());
+      LOGGER.info("Added public invoke permission to Function for {}", functionName);
 
       return url;
     } catch (Exception e) {

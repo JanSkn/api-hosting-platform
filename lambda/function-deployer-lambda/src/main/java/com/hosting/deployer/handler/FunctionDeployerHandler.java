@@ -57,8 +57,7 @@ public class FunctionDeployerHandler implements RequestHandler<Map<String, Objec
 
       LOGGER.info("Processing CodeBuild SUCCEEDED event");
 
-      String accountId = context.getInvokedFunctionArn().split(":")[4];
-      deploymentManagerService.deploy(userId, deploymentId, imageTag, accountId);
+      deploymentManagerService.deploy(userId, deploymentId, imageTag);
 
     } catch (Exception e) {
       LOGGER.error("Failed to process deployment event", e);

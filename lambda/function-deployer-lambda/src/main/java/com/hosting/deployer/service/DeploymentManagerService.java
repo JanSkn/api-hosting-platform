@@ -18,13 +18,13 @@ public class DeploymentManagerService {
     this.deploymentService = deploymentService;
   }
 
-  public void deploy(String userId, String deploymentId, String imageTag, String accountId) {
+  public void deploy(String userId, String deploymentId, String imageTag) {
     LOGGER.info("Starting API deployment");
 
     String repositoryUri = EcrConfig.REPOSITORY_URI;
     String imageUri = repositoryUri + ":" + imageTag;
 
-    lambdaRepository.createFunction(deploymentId, imageUri, accountId);
+    lambdaRepository.createFunction(deploymentId, imageUri);
     String functionUrl = lambdaRepository.setupFunctionUrl(deploymentId);
 
     deploymentService.setApiUri(userId, deploymentId, functionUrl);

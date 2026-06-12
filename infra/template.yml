@@ -368,8 +368,7 @@ Resources:
             ]
           }
 
-  # Execution role assigned to every user-deployed Lambda (app-*). The function-deployer
-  # hardcodes this exact role name (LambdaDeploymentRepository.java: role/UserFunctionRole).
+  # Execution role assigned to every user-deployed Lambda (app-*).
   # Intentionally minimal: untrusted user code only gets CloudWatch Logs access.
   #
   # Log retention/cleanup for these functions is handled by the function-deployer at runtime
@@ -379,7 +378,6 @@ Resources:
   UserFunctionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: UserFunctionRole # name is hardcoded in LambdaDeploymentRepository.java
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -417,6 +415,7 @@ Resources:
             LAMBDA_ENVIRONMENT: "FUNCTION_DEPLOYER_LAMBDA"
             ECR_REPOSITORY_URI: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}"
             DEPLOYMENTS_METADATA_TABLE: !Ref DeploymentsMetadataTable
+            FUNCTION_URL_USER_ROLE_ARN: !GetAtt UserFunctionRole.Arn
       Policies:
         # create the user's Lambda from the ECR image and expose it via a public Function URL
         - Statement:
