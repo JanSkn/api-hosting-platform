@@ -84,11 +84,10 @@ const NewDeployment = () => {
   };
 
   const addEnvVar = () => setEnvVars([...envVars, { key: "", value: "", isSecret: false }]);
-  const updateEnvVar = (index: number, field: "key" | "value" | "isSecret", val: string | boolean) => {
-    const updated = [...envVars];
-    // @ts-ignore
-    updated[index][field] = val;
-    setEnvVars(updated);
+  const updateEnvVar = (index: number, field: keyof EnvVar, val: string | boolean) => {
+    setEnvVars(prev => prev.map((env, i) => 
+      i === index ? { ...env, [field]: val } : env
+    ));
   };
   const removeEnvVar = (index: number) => setEnvVars(envVars.filter((_, i) => i !== index));
 
