@@ -3,7 +3,7 @@ package com.hosting.common.config;
 import software.amazon.awssdk.services.lambda.model.Architecture;
 import software.amazon.awssdk.services.lambda.model.PackageType;
 
-public final class UserLambdaConfig {
+public final class UserLambdaConfig extends BaseConfig {
 
   private UserLambdaConfig() {
     throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
@@ -12,6 +12,7 @@ public final class UserLambdaConfig {
   public static final PackageType PACKAGE_TYPE = PackageType.IMAGE;
   // architecture should match the codebuild architecture in the template.yml
   public static final Architecture ARCHITECTURE = Architecture.ARM64;
-  public static final int TIMEOUT_SECONDS = 30;
+  public static final int TIMEOUT_SECONDS = 5; // short for user code
   public static final int MEMORY_SIZE_MB = 128;
+  public static final String FUNCTION_URL_ROLE_ARN = getOrThrow("FUNCTION_URL_USER_ROLE_ARN");
 }

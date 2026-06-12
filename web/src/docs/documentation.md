@@ -43,7 +43,7 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 
 ### Python Setup
 
-1. Your dependency file (**`requirements.txt`** or **`pyproject.toml`**) must be in the **root directory**.
+1. Your dependency file (**`requirements.txt`** or **`pyproject.toml`**) must be in the **root directory**. Note that `uvicorn` as an ASGI server is a required dependency.
 2. Your main application file must be named **`main.py`** and located in the root directory.
 3. Inside `main.py`, your FastAPI instance variable must be named **`app`**.
 
@@ -65,7 +65,7 @@ def read_root():
 
 You can define custom environment variables directly in your project's deployment settings on the APIForge dashboard.
 
-* All variables are encrypted at rest and injected into your runtime environment automatically.
+* Secret variables are encrypted at rest and injected into your runtime environment automatically. Note that they will not be rotated
 * **Never** commit secrets, passwords, or `.env` files to your repository.
 * **Note for Node.js:** The `PORT` variable is reserved by the platform and automatically managed for you.
 
@@ -75,6 +75,6 @@ You can define custom environment variables directly in your project's deploymen
 
 | Resource | Limit | Description |
 | --- | --- | --- |
-| Request Timeout | 30 seconds | Maximum time your API has to respond to an incoming request. |
+| Request Timeout | 5 seconds | Maximum time your API has to respond to an incoming request. |
 | Payload Size | 6 MB | Maximum size for incoming HTTP request bodies and responses. |
 | Concurrency | 1,000 | Maximum number of simultaneous requests handled before throttling. |
