@@ -88,7 +88,7 @@ Production deployment is manually triggered after staging succeeds.
 
 Production:
 
-<PRODUCTION_URL>
+https://d1ldsga5pjglgd.cloudfront.net/
 
 # Architecture
 
