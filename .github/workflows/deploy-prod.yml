@@ -27,7 +27,6 @@ jobs:
     env:
       AWS_STG_ACCOUNT_ID: "071308038858"
       AWS_PRD_ACCOUNT_ID: "591292939760"
-      BUILD_PREFIX: "s3://apiforge-artifacts-071308038858/builds/${{ github.event.workflow_run.head_sha }}" # bucket from staging env
 
     steps:
       # check out the released tag so the SAM template / scripts match the artifacts
@@ -43,6 +42,8 @@ jobs:
         run: |
           SHA=$(git rev-parse HEAD)
           echo "SHA=$SHA" >> "$GITHUB_ENV"
+          echo "BUILD_PREFIX=s3://apiforge-artifacts-071308038858/builds/$SHA" >> "$GITHUB_ENV"
+
           echo "Releasing commit $SHA (tag ${{ github.event.release.tag_name }})"
 
       - name: Configure AWS Production Credentials (OIDC)

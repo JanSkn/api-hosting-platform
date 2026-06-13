@@ -107,7 +107,7 @@ jobs:
 
       - name: Create GitHub Release + tag
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_AUTOMATION_TOKEN }}
         run: |
           echo "Creating release $VERSION at $SHA ..."
           if [ "$IS_ROLLBACK" = "true" ]; then
