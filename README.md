@@ -4,7 +4,7 @@
 
 Just provide a GitHub repository URL or upload a ZIP file, and your API will be deployed in minutes.
 
-Try out here (TODO link).
+Try out [here](https://d1ldsga5pjglgd.cloudfront.net).
 
 Read the documentation [here](web/src/docs/documentation.md).
 
