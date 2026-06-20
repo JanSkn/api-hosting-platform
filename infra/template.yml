@@ -39,7 +39,7 @@ Parameters:
     Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
-    Default: "apiforge-user-code-uploads" # must be unique worldwide
+    Default: "code-uploads"
   EcrRepositoryName:
     Type: String
     Default: "user-apps"
@@ -121,6 +121,7 @@ Resources:
           BUILD_QUEUE_URL: !Ref BuildJobQueue 
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
+          CODEBUILD_LOG_GROUP: !Ref CodeBuildLogGroup
           DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
           ENV_VARIABLES_PREFIX: !Ref ParameterStoreEnvVariablesPrefix
       Policies:
@@ -128,6 +129,7 @@ Resources:
         # (Crud = Get/Head + Put + Delete + List, all needed across the deployment lifecycle)
         - S3CrudPolicy:
             BucketName: !Ref UserCodeBucket
+        # TODO presigned url create policy for log
         # deployment metadata
         - DynamoDBCrudPolicy:
             TableName: !Ref DeploymentsMetadataTable
@@ -260,6 +262,7 @@ Resources:
         Variables:
           LAMBDA_ENVIRONMENT: "SQS_DISPATCHER_LAMBDA"
           CODEBUILD_PROJECT_NAME: apiforge-user-code-builder # must match the name defined in the CodeBuildResource
+          CODEBUILD_LOG_GROUP: !Ref CodeBuildLogGroup
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
           DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
@@ -288,7 +291,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # write logs
+              # write Build Logs to CloudWatch to get live logs while building
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
@@ -346,8 +349,11 @@ Resources:
                 - echo "Placeholder buildspec. Overridden during invocation."
       LogsConfig:
         CloudWatchLogs:
-          Status: ENABLED
+          Status: "ENABLED"
           GroupName: !Ref CodeBuildLogGroup
+        # we override with deployment-specific S3 location
+        S3Logs:
+          Status: "DISABLED"
 
   EcrRepository:
     Type: AWS::ECR::Repository

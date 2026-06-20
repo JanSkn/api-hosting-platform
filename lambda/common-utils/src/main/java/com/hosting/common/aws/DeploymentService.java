@@ -2,13 +2,16 @@ package com.hosting.common.aws;
 
 import com.hosting.common.aws.dynamo.models.Deployment;
 import com.hosting.common.aws.repositories.BuildQueueRepository;
+import com.hosting.common.aws.repositories.DeploymentLogsRepository;
 import com.hosting.common.aws.repositories.DeploymentMetadataRepository;
 import com.hosting.common.aws.repositories.EcrRepository;
 import com.hosting.common.aws.repositories.LambdaDeploymentRepository;
 import com.hosting.common.aws.repositories.ParameterStoreRepository;
 import com.hosting.common.aws.repositories.UserCodeRepository;
 import com.hosting.common.config.S3Config;
+import com.hosting.common.dto.CloudWatchLogsResponse;
 import com.hosting.common.dto.CreateDeploymentRequest;
+import com.hosting.common.dto.DeploymentLogsUrlResponse;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import com.hosting.common.exceptions.DuplicateDeploymentNameException;
@@ -36,6 +39,7 @@ public class DeploymentService {
   public UserCodeRepository userCode;
   public BuildQueueRepository buildQueue;
   public LambdaDeploymentRepository lambdaDeploymentRepository;
+  public DeploymentLogsRepository deploymentLogsRepository;
   public EcrRepository ecrRepository;
   private ParameterStoreRepository parameterStoreRepository;
 
@@ -47,12 +51,14 @@ public class DeploymentService {
       UserCodeRepository userCodeRepository,
       BuildQueueRepository jobQueueRepository,
       LambdaDeploymentRepository lambdaDeploymentRepository,
+      DeploymentLogsRepository deploymentLogsRepository,
       EcrRepository ecrRepository,
       ParameterStoreRepository parameterStoreRepository) {
     this.deploymentMetadata = deploymentRepository;
     this.userCode = userCodeRepository;
     this.buildQueue = jobQueueRepository;
     this.lambdaDeploymentRepository = lambdaDeploymentRepository;
+    this.deploymentLogsRepository = deploymentLogsRepository;
     this.ecrRepository = ecrRepository;
     this.parameterStoreRepository = parameterStoreRepository;
   }
@@ -250,6 +256,8 @@ public class DeploymentService {
     deploymentMetadata.delete(userId, deploymentId);
     parameterStoreRepository.deleteAllUserEnvVariables(userId);
     userCode.deleteUserCode(userId, deploymentId);
+
+    deploymentLogsRepository.deleteUserLogs(userId, deploymentId);
   }
 
   public void deleteDeployments(String userId) {
@@ -260,5 +268,10 @@ public class DeploymentService {
         deleteDeployment(userId, deployment.getDeploymentId());
       }
     }
+  }
+
+  public CloudWatchLogsResponse getCloudWatchLogs(
+      String userId, String deploymentId, String nextToken) {
+    return deploymentLogsRepository.getCloudWatchLogs(userId, deploymentId, nextToken);
   }
 }

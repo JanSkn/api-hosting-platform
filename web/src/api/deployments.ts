@@ -96,3 +96,22 @@ export async function triggerDeployment(deploymentId: string): Promise<void> {
 export async function deleteDeployment(deploymentId: string): Promise<void> {
   await apiFetch(`/deployments/${deploymentId}`, { method: "DELETE" });
 }
+
+export interface CloudWatchLogsResponse {
+  events: { message: string; timestamp: number }[];
+  nextToken: string | null;
+}
+
+export interface DeploymentLogsUrlResponse {
+  uploadUrls: string[];
+}
+
+export async function fetchCloudWatchLogs(
+  deploymentId: string,
+  nextToken?: string
+): Promise<CloudWatchLogsResponse> {
+  const url = `/deployments/logs?deploymentId=${deploymentId}${nextToken ? `&nextToken=${encodeURIComponent(nextToken)}` : ""}`;
+  const res = await apiFetch(url);
+  return res.json();
+}
+

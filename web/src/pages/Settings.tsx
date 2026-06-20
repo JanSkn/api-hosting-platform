@@ -1,7 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useCurrentUser, useDeleteAccount } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -47,19 +46,6 @@ const Settings = () => {
                 <Label>Email</Label>
                 <p className="text-sm text-foreground">{user?.email ?? "—"}</p>
               </div>
-            </div>
-          </section>
-
-          <Separator />
-
-          <section className="space-y-4">
-            <h2 className="text-lg font-medium text-foreground">Notifications</h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">Deploy alerts</p>
-                <p className="text-xs text-muted-foreground">Get notified when a deployment fails</p>
-              </div>
-              <Switch defaultChecked />
             </div>
           </section>
 
