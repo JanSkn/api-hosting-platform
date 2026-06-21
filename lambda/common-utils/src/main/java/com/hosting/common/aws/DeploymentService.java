@@ -11,7 +11,6 @@ import com.hosting.common.aws.repositories.UserCodeRepository;
 import com.hosting.common.config.S3Config;
 import com.hosting.common.dto.CloudWatchLogsResponse;
 import com.hosting.common.dto.CreateDeploymentRequest;
-import com.hosting.common.dto.DeploymentLogsUrlResponse;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import com.hosting.common.exceptions.DuplicateDeploymentNameException;

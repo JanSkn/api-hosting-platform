@@ -53,7 +53,7 @@ public class DeploymentLogsRepository {
       for (int i = 0; i < 100; ++i) {
         String formattedLogContent =
             String.format(
-                "[LOCAL] [%d/100] Fake CodeBuild log row for build %s\n", i+1, buildIdShort);
+                "[LOCAL] [%d/100] Fake CodeBuild log row for build %s\n", i + 1, buildIdShort);
         logEvents.add(
             InputLogEvent.builder()
                 .message(formattedLogContent)

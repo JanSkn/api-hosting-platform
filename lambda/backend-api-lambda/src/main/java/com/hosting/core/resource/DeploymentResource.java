@@ -4,7 +4,6 @@ import com.hosting.common.aws.DeploymentService;
 import com.hosting.common.dto.CloudWatchLogsResponse;
 import com.hosting.common.dto.CreateDeploymentRequest;
 import com.hosting.common.dto.CreateDeploymentResponse;
-import com.hosting.common.dto.DeploymentLogsUrlResponse;
 import com.hosting.common.dto.UploadUrlResponse;
 import com.hosting.common.enums.DeploymentEnums.Status;
 import com.hosting.common.logging.LoggingConfig;

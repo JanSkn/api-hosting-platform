@@ -129,7 +129,6 @@ Resources:
         # (Crud = Get/Head + Put + Delete + List, all needed across the deployment lifecycle)
         - S3CrudPolicy:
             BucketName: !Ref UserCodeBucket
-        # TODO presigned url create policy for log
         # deployment metadata
         - DynamoDBCrudPolicy:
             TableName: !Ref DeploymentsMetadataTable
@@ -166,6 +165,17 @@ Resources:
               - "kms:Encrypt"
               - "kms:GenerateDataKey*"
             Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ssm"
+          - Sid: ReadAndDeleteBuildLogs
+            Effect: Allow
+            Action:
+              - logs:GetLogEvents # stream build logs to frontend
+              - logs:DeleteLogStream # delete log stream in the codebuild log group
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/apiforge-user-code-builder:*"
+          - Sid: DeleteUserFunctionLogGroups
+            Effect: Allow
+            Action:
+              - logs:DeleteLogGroup
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/app-*"
 
   DeploymentsMetadataTable:
   # not AWS::Serverless:SimpleTable for secondary key

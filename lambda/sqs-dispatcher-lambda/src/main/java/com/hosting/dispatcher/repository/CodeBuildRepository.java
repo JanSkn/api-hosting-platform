@@ -124,8 +124,7 @@ public class CodeBuildRepository {
       com.hosting.common.aws.ClientProducer clientProducer =
           new com.hosting.common.aws.ClientProducer();
       DeploymentLogsRepository deploymentLogsRepository =
-          new DeploymentLogsRepository(
-              clientProducer.cloudWatchLogsClient());
+          new DeploymentLogsRepository(clientProducer.cloudWatchLogsClient());
       // Localstack does not emulate logs for CodeBuild
       deploymentLogsRepository.uploadFakeLogs(
           buildId, buildMessage.userId(), buildMessage.deploymentId());
