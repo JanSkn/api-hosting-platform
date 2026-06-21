@@ -6,6 +6,7 @@ import {
   fetchUserAttributes,
 } from "aws-amplify/auth";
 import { apiFetch } from "./apiClient";
+import { clearLogCache } from "@/utils/logCache";
 
 export interface User {
   id: string;
@@ -17,6 +18,7 @@ export async function login(email: string, password: string): Promise<User> {
   // Clear any lingering session first; Amplify's signIn throws
   // "There is already a signed in user" otherwise, which would silently
   // leave the previous user's session active.
+  clearLogCache();
   await signOut();
   await signIn({ username: email, password });
   return getCurrentUser() as Promise<User>;
@@ -27,6 +29,7 @@ export async function register(
   email: string,
   password: string
 ): Promise<User> {
+  clearLogCache();
   await signUp({
     username: email,
     password,
@@ -47,6 +50,7 @@ export async function register(
 }
 
 export async function logout(): Promise<void> {
+  clearLogCache();
   await signOut();
 }
 
@@ -76,6 +80,7 @@ export async function updateProfile(_data: { name: string }): Promise<User> {
 }
 
 export async function deleteAccount(): Promise<void> {
+  clearLogCache();
   await apiFetch("/users/me", { method: "DELETE" });
   await signOut();
 }

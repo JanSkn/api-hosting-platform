@@ -1,6 +1,7 @@
 package com.hosting.core.resource;
 
 import com.hosting.common.aws.DeploymentService;
+import com.hosting.common.dto.CloudWatchLogsResponse;
 import com.hosting.common.dto.CreateDeploymentRequest;
 import com.hosting.common.dto.CreateDeploymentResponse;
 import com.hosting.common.dto.UploadUrlResponse;
@@ -73,7 +74,7 @@ public class DeploymentResource extends BaseResource {
   @Path("/upload-url")
   public Response generateS3CodeUploadUrl(@QueryParam("deploymentId") String deploymentId) {
     LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
-    LOGGER.info("Generating S3 upload URL");
+    LOGGER.info("Generating presigned S3 upload URL");
 
     UploadUrlResponse response =
         deploymentService.generateUploadUrl(claims.getUserId(), deploymentId);
@@ -112,5 +113,18 @@ public class DeploymentResource extends BaseResource {
     deploymentService.deleteDeployment(claims.getUserId(), deploymentId);
 
     return createResponse(Response.Status.OK, "Deployment deleted");
+  }
+
+  @GET
+  @Path("/logs")
+  public Response getCloudWatchDeploymentLogs(
+      @QueryParam("deploymentId") String deploymentId, @QueryParam("nextToken") String nextToken) {
+    LoggingConfig.put(LoggingConfig.DEPLOYMENT_ID_MDC_KEY, deploymentId);
+    LOGGER.info("Fetching CloudWatch deployment logs");
+
+    CloudWatchLogsResponse response =
+        deploymentService.getCloudWatchLogs(claims.getUserId(), deploymentId, nextToken);
+
+    return createResponse(Response.Status.OK, response);
   }
 }

@@ -1,7 +1,9 @@
 package com.hosting.dispatcher.repository;
 
+import com.hosting.common.aws.repositories.DeploymentLogsRepository;
 import com.hosting.common.aws.sqs.models.BuildMessage;
 import com.hosting.common.config.CodeBuildConfig;
+import com.hosting.common.config.CodeBuildLogConfig;
 import com.hosting.common.config.EcrConfig;
 import com.hosting.common.config.GlobalConfig;
 import com.hosting.common.config.S3Config;
@@ -11,7 +13,10 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.codebuild.CodeBuildClient;
+import software.amazon.awssdk.services.codebuild.model.CloudWatchLogsConfig;
 import software.amazon.awssdk.services.codebuild.model.EnvironmentVariable;
+import software.amazon.awssdk.services.codebuild.model.LogsConfig;
+import software.amazon.awssdk.services.codebuild.model.LogsConfigStatusType;
 import software.amazon.awssdk.services.codebuild.model.StartBuildRequest;
 import software.amazon.awssdk.services.codebuild.model.StartBuildResponse;
 import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
@@ -35,6 +40,9 @@ public class CodeBuildRepository {
     String repositoryUri = EcrConfig.REPOSITORY_URI;
     String s3SourceUri =
         String.format("s3://%s/%s", S3Config.USER_CODE_BUCKET, buildMessage.s3ObjectKey());
+    String logStreamName =
+        DeploymentLogsRepository.getLogStreamName(
+            buildMessage.userId(), buildMessage.deploymentId());
     String buildspec =
         generateBuildspec(buildMessage.runtime().name(), imageTag, repositoryUri, s3SourceUri);
 
@@ -87,6 +95,18 @@ public class CodeBuildRepository {
         StartBuildRequest.builder()
             .projectName(CodeBuildConfig.PROJECT_NAME)
             .buildspecOverride(buildspec)
+            // We store logs to S3 to later retrieve them when the user opens the details of old
+            // deployments.
+            // We also stream the logs to the log group and separate per deployment by a stream.
+            .logsConfigOverride(
+                LogsConfig.builder()
+                    .cloudWatchLogs(
+                        CloudWatchLogsConfig.builder()
+                            .status(LogsConfigStatusType.ENABLED)
+                            .groupName(CodeBuildLogConfig.LOG_GROUP)
+                            .streamName(logStreamName)
+                            .build())
+                    .build())
             .environmentVariablesOverride(envVars)
             .build();
 
@@ -98,6 +118,17 @@ public class CodeBuildRepository {
 
     if (GlobalConfig.isLocalStack()) {
       LOGGER.info("[LOCAL] Enter waitForBuildCompletion ...", buildId);
+      // Lazy-load: we only need the repository for local testing
+      // We upload the logs FIRST because otherwise the logs will be created after completing the
+      // build
+      com.hosting.common.aws.ClientProducer clientProducer =
+          new com.hosting.common.aws.ClientProducer();
+      DeploymentLogsRepository deploymentLogsRepository =
+          new DeploymentLogsRepository(clientProducer.cloudWatchLogsClient());
+      // Localstack does not emulate logs for CodeBuild
+      deploymentLogsRepository.uploadFakeLogs(
+          buildId, buildMessage.userId(), buildMessage.deploymentId());
+
       waitForBuildCompletion(buildId);
 
       publishCodeBuildSuccessEvent(
@@ -114,6 +145,7 @@ public class CodeBuildRepository {
 
   // Dockerfiles populated to S3 in deploy-stack.sh from
   // sqs-dispatcher-lambda/src/main/resources/templates/
+  // The logs of CodeBuild will be user-facing, so we do not log too verbosely here
   private String generateBuildspec(
       String runtimeName, String imageTag, String repositoryUri, String s3SourceUri) {
     String templateKey = runtimeName + ".Dockerfile";
@@ -127,28 +159,28 @@ public class CodeBuildRepository {
     buildspec.append("  pre_build:\n");
     buildspec.append("    commands:\n");
 
-    buildspec.append("      - echo \"Logging into ECR ...\"\n");
+    buildspec.append("      - echo \"Preparing build environment...\"\n");
     buildspec
         .append("      - aws ecr get-login-password --region ")
         .append(GlobalConfig.AWS_REGION)
         .append(" | docker login --username AWS --password-stdin ")
         .append(repositoryUri)
-        .append("\n");
+        .append(" > /dev/null 2>&1\n");
 
     buildspec
         .append("  build:\n")
         .append("    commands:\n")
-        .append("      - echo \"Fetching Dockerfile template from S3...\"\n")
         .append("      - aws s3 cp ")
         .append(templateUri)
-        .append(" Dockerfile\n")
-        .append("      - echo \"Fetching user code from S3...\"\n")
+        .append(" Dockerfile > /dev/null 2>&1\n")
         .append("      - aws s3 cp ")
         .append(s3SourceUri)
-        .append(" source.zip\n")
-        .append("      - unzip -j source.zip -d . || unzip source.zip\n")
-        .append("      - rm source.zip\n")
-        .append("      - echo \"Building Docker Image...\"\n")
+        .append(" source.zip > /dev/null 2>&1\n")
+        .append("      - echo \"Extracting source code...\"\n")
+        .append(
+            "      - unzip -q -j source.zip -d . > /dev/null 2>&1 || unzip -q source.zip > /dev/null 2>&1\n")
+        .append("      - rm source.zip > /dev/null 2>&1\n")
+        .append("      - echo \"Building container image (this may take a few minutes)...\"\n")
         .append("      - docker build -t \"")
         .append(pushTarget)
         .append("\" .\n");
@@ -156,10 +188,11 @@ public class CodeBuildRepository {
     buildspec
         .append("  post_build:\n")
         .append("    commands:\n")
-        .append("      - echo \"Pushing Docker Image to ECR...\"\n")
+        .append("      - echo \"Finalizing deployment and storing artifacts...\"\n")
         .append("      - docker push \"")
         .append(pushTarget)
-        .append("\"\n");
+        .append("\" > /dev/null 2>&1\n")
+        .append("      - echo \"Build successfully completed!\"\n");
 
     return buildspec.toString();
   }

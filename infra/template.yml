@@ -39,7 +39,7 @@ Parameters:
     Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
-    Default: "apiforge-user-code-uploads" # must be unique worldwide
+    Default: "code-uploads"
   EcrRepositoryName:
     Type: String
     Default: "user-apps"
@@ -121,6 +121,7 @@ Resources:
           BUILD_QUEUE_URL: !Ref BuildJobQueue 
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix
+          CODEBUILD_LOG_GROUP: !Ref CodeBuildLogGroup
           DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
           ENV_VARIABLES_PREFIX: !Ref ParameterStoreEnvVariablesPrefix
       Policies:
@@ -164,6 +165,17 @@ Resources:
               - "kms:Encrypt"
               - "kms:GenerateDataKey*"
             Resource: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ssm"
+          - Sid: ReadAndDeleteBuildLogs
+            Effect: Allow
+            Action:
+              - logs:GetLogEvents # stream build logs to frontend
+              - logs:DeleteLogStream # delete log stream in the codebuild log group
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/apiforge-user-code-builder:*"
+          - Sid: DeleteUserFunctionLogGroups
+            Effect: Allow
+            Action:
+              - logs:DeleteLogGroup
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/app-*"
 
   DeploymentsMetadataTable:
   # not AWS::Serverless:SimpleTable for secondary key
@@ -260,6 +272,7 @@ Resources:
         Variables:
           LAMBDA_ENVIRONMENT: "SQS_DISPATCHER_LAMBDA"
           CODEBUILD_PROJECT_NAME: apiforge-user-code-builder # must match the name defined in the CodeBuildResource
+          CODEBUILD_LOG_GROUP: !Ref CodeBuildLogGroup
           USER_CODE_BUCKET: !Ref UserCodeBucket
           USER_CODE_BUCKET_PREFIX: !Ref UserCodeBucketPrefix # for generating presigned URLs for user code uploads
           DOCKERFILE_TEMPLATE_BUCKET: !Ref DockerfileTemplateBucket
@@ -288,7 +301,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # write logs
+              # write Build Logs to CloudWatch to get live logs while building
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
@@ -346,8 +359,11 @@ Resources:
                 - echo "Placeholder buildspec. Overridden during invocation."
       LogsConfig:
         CloudWatchLogs:
-          Status: ENABLED
+          Status: "ENABLED"
           GroupName: !Ref CodeBuildLogGroup
+        # we override with deployment-specific S3 location
+        S3Logs:
+          Status: "DISABLED"
 
   EcrRepository:
     Type: AWS::ECR::Repository
