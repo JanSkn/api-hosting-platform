@@ -39,7 +39,7 @@ Parameters:
     Default: "deployments-metadata"
   UserCodeBucketPrefix:
     Type: String
-    Default: "code-uploads"
+    Default: "apifore-user-code-uploads"
   EcrRepositoryName:
     Type: String
     Default: "user-apps"

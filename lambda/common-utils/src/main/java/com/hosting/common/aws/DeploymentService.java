@@ -143,6 +143,13 @@ public class DeploymentService {
   public void triggerDeployment(String userId, String deploymentId) {
     LOGGER.info("Triggering deployment");
     Deployment deployment = deploymentMetadata.get(userId, deploymentId).orElseThrow();
+
+    Status currentStatus = deployment.getStatus();
+    if (currentStatus == Status.IN_PROGRESS || currentStatus == Status.LIVE) {
+      LOGGER.warn("Deployment is already in status {}, ignoring duplicate trigger", currentStatus);
+      return;
+    }
+
     boolean isGithubDeployment =
         deployment.getGithubUrl() != null && !deployment.getGithubUrl().isEmpty();
 
@@ -215,11 +222,13 @@ public class DeploymentService {
     }
   }
 
-  public void addBuildId(String userId, String deploymentId, String buildId) {
+  public void addBuildReference(
+      String userId, String deploymentId, String buildId, String logStreamName) {
     Optional<Deployment> deploymentOpt = getDeployment(userId, deploymentId);
     if (deploymentOpt.isPresent()) {
       Deployment deployment = deploymentOpt.get();
       deployment.setBuildId(buildId);
+      deployment.setLogStreamName(logStreamName);
       deploymentMetadata.update(deployment);
     } else {
       LOGGER.warn("Could not find deployment to update build ID");
@@ -271,6 +280,9 @@ public class DeploymentService {
 
   public CloudWatchLogsResponse getCloudWatchLogs(
       String userId, String deploymentId, String nextToken) {
-    return deploymentLogsRepository.getCloudWatchLogs(userId, deploymentId, nextToken);
+    String logStreamName =
+        getDeployment(userId, deploymentId).map(Deployment::getLogStreamName).orElse(null);
+
+    return deploymentLogsRepository.getCloudWatchLogs(logStreamName, nextToken);
   }
 }

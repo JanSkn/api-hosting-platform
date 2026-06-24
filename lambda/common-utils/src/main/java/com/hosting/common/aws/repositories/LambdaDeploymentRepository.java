@@ -9,8 +9,10 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DeleteLogGroupRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutRetentionPolicyRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceAlreadyExistsException;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
+import software.amazon.awssdk.services.lambda.model.ResourceConflictException;
 import software.amazon.awssdk.services.ssm.SsmClient;
 
 @ApplicationScoped
@@ -69,6 +71,11 @@ public class LambdaDeploymentRepository {
                       env.variables(parameterStoreRepository.getUserEnvVars(userId, deploymentId)))
               .build());
       LOGGER.info("Created new lambda function: {}", functionName);
+    } catch (ResourceConflictException e) {
+      // TODO: fix in the future if required.
+      // Function already exists — can happen on SQS retry or re-deploy.
+      // For now, just warn.
+      LOGGER.warn("Lambda function {} already exists, continuing", functionName);
     } catch (Exception e) {
       LOGGER.error("Error creating Lambda function: {}", functionName, e);
       throw new RuntimeException("Error creating Lambda function: " + e.getMessage(), e);
@@ -141,6 +148,8 @@ public class LambdaDeploymentRepository {
     try {
       logsClient.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroupName).build());
       LOGGER.info("Created log group: {}", logGroupName);
+    } catch (ResourceAlreadyExistsException e) {
+      LOGGER.warn("Log group {} already exists, skipping creation", logGroupName);
     } catch (Exception e) {
       LOGGER.error("Failed to create log group: {}", logGroupName, e);
       return;
