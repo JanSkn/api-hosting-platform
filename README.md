@@ -81,7 +81,7 @@ APIForge is fully built on AWS and leverages a serverless architecture for scala
   * Stores metadata (deployments, users, status)
 
 * **AWS Systems Manager (Parameter Store)**
-  * Stores user-defines secrets per deployment
+  * Stores user-defined secrets per deployment
 
 * **Amazon Cognito**
   * Handles authentication and user management
