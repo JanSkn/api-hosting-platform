@@ -92,10 +92,8 @@ public class DeploymentLogsRepository {
   }
 
   /** If nextToken is null, returns all logs until the latest */
-  public CloudWatchLogsResponse getCloudWatchLogs(
-      String userId, String deploymentId, String nextToken) {
+  public CloudWatchLogsResponse getCloudWatchLogs(String logStreamName, String nextToken) {
     String logGroupName = CodeBuildLogConfig.LOG_GROUP;
-    String logStreamName = getLogStreamName(userId, deploymentId);
 
     try {
       GetLogEventsRequest.Builder requestBuilder =

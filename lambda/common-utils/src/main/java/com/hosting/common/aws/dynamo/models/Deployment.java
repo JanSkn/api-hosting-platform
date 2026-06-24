@@ -14,6 +14,7 @@ public class Deployment {
   private String deploymentId;
   private String name;
   private String buildId;
+  private String logStreamName; // actual CW log stream name assigned by CodeBuild
   private Status status;
   private Runtime runtime;
   private String s3ObjectKey; // user code location in S3
@@ -59,6 +60,14 @@ public class Deployment {
 
   public void setBuildId(String buildId) {
     this.buildId = buildId;
+  }
+
+  public String getLogStreamName() {
+    return logStreamName;
+  }
+
+  public void setLogStreamName(String logStreamName) {
+    this.logStreamName = logStreamName;
   }
 
   public Status getStatus() {
@@ -132,6 +141,7 @@ public class Deployment {
         .add("deploymentId='" + deploymentId + "'")
         .add("name='" + name + "'")
         .add("buildId='" + buildId + "'")
+        .add("logStreamName='" + logStreamName + "'")
         .add("status='" + status + "'")
         .add("runtime='" + runtime + "'")
         .add("s3ObjectKey='" + s3ObjectKey + "'")

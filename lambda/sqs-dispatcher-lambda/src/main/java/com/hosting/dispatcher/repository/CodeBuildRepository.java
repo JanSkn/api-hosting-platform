@@ -24,6 +24,8 @@ import software.amazon.awssdk.services.eventbridge.model.*;
 
 public class CodeBuildRepository {
 
+  public record BuildJobResult(String buildId, String logStreamName) {}
+
   private static final Logger LOGGER = LoggerFactory.getLogger(CodeBuildRepository.class);
   private final CodeBuildClient codeBuildClient;
   private final EventBridgeClient eventBridgeClient;
@@ -33,14 +35,14 @@ public class CodeBuildRepository {
     this.eventBridgeClient = eventBridgeClient;
   }
 
-  public String startBuildJob(BuildMessage buildMessage, String imageTag) {
+  public BuildJobResult startBuildJob(BuildMessage buildMessage, String imageTag) {
     LOGGER.info("Starting build job for runtime: {}", buildMessage.runtime());
 
     // prepare dynamic buildspec
     String repositoryUri = EcrConfig.REPOSITORY_URI;
     String s3SourceUri =
         String.format("s3://%s/%s", S3Config.USER_CODE_BUCKET, buildMessage.s3ObjectKey());
-    String logStreamName =
+    String buildLogStreamOverride =
         DeploymentLogsRepository.getLogStreamName(
             buildMessage.userId(), buildMessage.deploymentId());
     String buildspec =
@@ -104,7 +106,7 @@ public class CodeBuildRepository {
                         CloudWatchLogsConfig.builder()
                             .status(LogsConfigStatusType.ENABLED)
                             .groupName(CodeBuildLogConfig.LOG_GROUP)
-                            .streamName(logStreamName)
+                            .streamName(buildLogStreamOverride)
                             .build())
                     .build())
             .environmentVariablesOverride(envVars)
@@ -112,9 +114,10 @@ public class CodeBuildRepository {
 
     StartBuildResponse response = codeBuildClient.startBuild(startBuildRequest);
     String buildId = response.build().id();
+    String logStreamName = response.build().logs().streamName();
 
     LoggingConfig.put("buildId", buildId);
-    LOGGER.info("Started CodeBuild job");
+    LOGGER.info("Started CodeBuild job (logStream: {})", logStreamName);
 
     if (GlobalConfig.isLocalStack()) {
       LOGGER.info("[LOCAL] Enter waitForBuildCompletion ...", buildId);
@@ -140,7 +143,7 @@ public class CodeBuildRepository {
           buildMessage.correlationId());
     }
 
-    return buildId;
+    return new BuildJobResult(buildId, logStreamName);
   }
 
   // Dockerfiles populated to S3 in deploy-stack.sh from

@@ -22,8 +22,13 @@ public class CodeBuildService {
   public void startBuild(BuildMessage buildMessage) {
     String imageTag =
         DeploymentService.generateImageTag(buildMessage.userId(), buildMessage.deploymentId());
-    String buildId = codeBuildRepository.startBuildJob(buildMessage, imageTag);
+    CodeBuildRepository.BuildJobResult result =
+        codeBuildRepository.startBuildJob(buildMessage, imageTag);
 
-    deploymentService.addBuildId(buildMessage.userId(), buildMessage.deploymentId(), buildId);
+    deploymentService.addBuildReference(
+        buildMessage.userId(),
+        buildMessage.deploymentId(),
+        result.buildId(),
+        result.logStreamName());
   }
 }
